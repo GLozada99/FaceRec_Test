@@ -1,7 +1,6 @@
-import mariadb
 import sys
+import mariadb
 from os import environ
-import numpy
 
 def connect():
     try:

@@ -1,7 +1,7 @@
-import face_recognition
-import sys, numpy, os
 import database as db
-
+import numpy, os, io
+import face_recognition
+from PIL import Image
 
 '''
 Encode means taking a numpy array and turning it into bytes so that it can be stored on and retrieved from a database
@@ -49,4 +49,18 @@ def save_encoding(path: str, mode: bool=False):
     data = byte_encode(path, mode)
     db.insert_code(conn, *data)
     conn.close()
+
+def get_data():
+    '''
+    Gets data from db, turns picture and face data (in bytes) into the usable data objects
+    '''
+    data = []
+    conn = db.connect()
+    encoded_data = db.get_encondings(conn)
+    for name, num, picture, enc_dat, in encoded_data:
+        image = Image.open(io.BytesIO(picture))
+        decoded_face = byte_decode(enc_dat)
+        data.append((name, num, image, decoded_face))
+    conn.close()
+    return data
 
