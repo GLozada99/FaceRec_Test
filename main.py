@@ -75,7 +75,6 @@ def face_recog_live(camera_address=0):
         if (time.time() - last_time) > 5:
             face_locations = face_recognition.face_locations(rgb_frame)
             unknown_face_encondings = face_recognition.face_encodings(rgb_frame, face_locations)
-
             if unknown_face_encondings:
                 unknown_face_enconding = unknown_face_encondings[0]
                 results = face_recognition.compare_faces(faces_data, unknown_face_enconding)
@@ -85,8 +84,11 @@ def face_recog_live(camera_address=0):
                 if results[best_match_index]:
                     name = dat[best_match_index][0]
                     if name:
-                        print(f'{name} was recognized')
+                        now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+                        print(f'{name} was recognized at {now}')
+                        enc.populate_table_with_picture(picture_data=(name, frame.tobytes(), unknown_face_enconding))
                         last_time = time.time()
+
 
         cv2.imshow('Video', frame)
         
@@ -95,12 +97,6 @@ def face_recog_live(camera_address=0):
     
     video_capture.release()
     cv2.destroyAllWindows()
-
-                
-        
-
-
-
 
     
 if __name__ == "__main__":

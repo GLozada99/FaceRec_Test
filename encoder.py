@@ -14,7 +14,7 @@ def byte_encode(path: str, large: bool=False) -> tuple[str, bytes, bytes]:
     Given path of image, takes the face, and encodes it into bytes. Returns name of image, raw picture in bytes, face enconding of numpy array in bytes
     '''
     mod = 'large' if large else 'small'
-    name = path.split('/')[-1]
+    name = path.split('/')[-1].split('_')[0]
     pic = face_recognition.load_image_file(path)
     face_encoding = face_recognition.face_encodings(pic,model=mod)[0].tobytes()
     with open(path, 'rb') as fil:
@@ -39,6 +39,21 @@ def populate_table_with_directory(DIR: str):
             pic_address = os.path.join(root, name)
             data = byte_encode(pic_address,True)
             db.insert_code(conn, *data)
+    conn.close()
+
+def populate_table_with_picture(pic_address: str=None, picture_data=None):
+    '''
+    Encodes and inserts one picture, encondes and inserts them into table in database
+    '''
+    conn = db.connect()
+    if pic_address:
+        data = byte_encode(pic_address,True)
+    elif picture_data:
+        data = picture_data
+    try:
+        db.insert_code(conn, *data)
+    except Exception as e:
+        print(e)
     conn.close()
 
 def save_encoding(path: str, mode: bool=False):
