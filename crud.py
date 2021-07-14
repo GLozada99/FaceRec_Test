@@ -12,7 +12,6 @@ def add_entry(entry):
     Adds an entry to de database
     Entry must be a class object that derives from DeclarativeMeta class on sqlalchemy
     '''
-    #newPicture = Picture(name=name,picture_bytes=picture_bytes,face_bytes=face_bytes)
     _session.add(entry)
     _session.commit()
 
@@ -68,7 +67,7 @@ def reactivate_entry(Class, id: int):
     '''
     entry = _session.query(Class).get(id)
     if hasattr(entry, 'active'):
-        _set_entry_status(entry, False)
+        _set_entry_status(entry, False)     
 
 def update_entry(Class, entry):
     #not very sure about this one...

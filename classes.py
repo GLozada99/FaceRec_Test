@@ -17,8 +17,8 @@ class Picture(Base):
     __tablename__ = 'pictures2'
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
     name = sqlalchemy.Column(sqlalchemy.String(length=30))
-    picture_bytes = sqlalchemy.Column(sqlalchemy.BLOB)
-    face_bytes = sqlalchemy.Column(sqlalchemy.BLOB)
+    picture_bytes = sqlalchemy.Column(sqlalchemy.dialects.mysql.LONGBLOB)
+    face_bytes = sqlalchemy.Column(sqlalchemy.dialects.mysql.LONGBLOB)
 
 
 if __name__ == '__main__':

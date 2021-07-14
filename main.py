@@ -1,4 +1,4 @@
-import database as db, encoder as enc
+import data_manipulation as dm
 import sys, numpy, time
 import face_recognition
 from PIL import Image
@@ -34,7 +34,7 @@ def face_recog_file(picture_path):
 
     #getting data of known pictures through database
     #dat is a list of (Person_Name, Number, Picture, Face Encoding)
-    dat = enc.get_data()
+    dat = dm.get_work_data()
     known_faces_encoding = list(zip(*dat))[3]
 
     #comparing and finding out if there's a match
@@ -56,8 +56,8 @@ def face_recog_live(camera_address=0):
     Applies face recognition to live streaming from camera using rtsp
     If theres no camera the PC's camera will be used
     '''
-    dat = enc.get_data()
-    faces_data = list(zip(*dat))[3]
+    dat = dm.get_work_data() #returns name, picture in bytes and numpy array of faces 
+    faces_data = list(zip(*dat))[2] #
 
     #getting VideoCapture object from device
     video_capture = cv2.VideoCapture(camera_address)
@@ -78,7 +78,6 @@ def face_recog_live(camera_address=0):
             if unknown_face_encondings:
                 unknown_face_enconding = unknown_face_encondings[0]
                 results = face_recognition.compare_faces(faces_data, unknown_face_enconding)
-                
                 face_distances = face_recognition.face_distance(faces_data, unknown_face_enconding)
                 best_match_index = numpy.argmin(face_distances)
                 if results[best_match_index]:
@@ -86,8 +85,8 @@ def face_recog_live(camera_address=0):
                     if name:
                         now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
                         print(f'{name} was recognized at {now}')
-                        enc.populate_table_with_picture(picture_data=(name, frame.tobytes(), unknown_face_enconding))
-                        last_time = time.time()
+                        #enc.populate_table_with_picture(picture_data=(name, frame.tobytes(), unknown_face_enconding))
+            last_time = time.time()
 
 
         cv2.imshow('Video', frame)
@@ -101,11 +100,16 @@ def face_recog_live(camera_address=0):
     
 if __name__ == "__main__":
     try:
-        if len(sys.argv) == 2:
-            face_recog_file(sys.argv[1])
+        if len(sys.argv) == 3:
+            if sys.argv[1] == '--add-directory':
+                dm.insert_picture_directory(sys.argv[2])
+            elif sys.argv[1] == '--add-file':
+                dm.insert_picture_file(sys.argv[2])
+            elif sys.argv[1] == '--face-recognition':
+                face_recog_file(sys.argv[2])
         else:
             IP_camera_address = 'rtsp://gustavo:123456789Gu@10.0.0.121:554/Streaming/Channels/102'
-            face_recog_live()
+            face_recog_live(IP_camera_address)
     except KeyboardInterrupt:
         print('\nbye')
     
