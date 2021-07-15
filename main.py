@@ -9,9 +9,20 @@ def show_pics(unknown, known):
     '''
     Shows unknown picture and the known picture that it resembles the most
     '''
-    pic = Image.fromarray(unknown)
-    pic.show()
-    known.show()
+    k_pic = Image.fromarray(known)
+    u_pic = Image.fromarray(unknown)
+    k_pic.show()
+    u_pic.show()
+
+def show_from_database():
+    dat = dm.get_work_data() #returns name, picture in bytes and numpy array of faces 
+    faces_data = list(zip(*dat))[1]
+    print(len(faces_data))
+    for i in range(15,len(faces_data)):
+        face = faces_data[i]
+        pic = Image.fromarray(face)
+        print(i)
+        pic.show()
 
 def face_recog_file(picture_path):
     '''
@@ -33,9 +44,9 @@ def face_recog_file(picture_path):
         sys.exit(1)
 
     #getting data of known pictures through database
-    #dat is a list of (Person_Name, Number, Picture, Face Encoding)
+    #dat is a list of (Name, Picture, Face array)
     dat = dm.get_work_data()
-    known_faces_encoding = list(zip(*dat))[3]
+    known_faces_encoding = list(zip(*dat))[2]
 
     #comparing and finding out if there's a match
     results = face_recognition.compare_faces(known_faces_encoding, unknown_face_enconding,0.6)
@@ -48,7 +59,7 @@ def face_recog_file(picture_path):
             print(f'{name} was recognized')
 
     #showing unknown image and its better match
-    # best_known_picture = dat[best_match_index][2]
+    # best_known_picture = dat[best_match_index][1]
     # show_pics(picture_loaded, best_known_picture)
 
 def face_recog_live(camera_address=0):
@@ -64,12 +75,11 @@ def face_recog_live(camera_address=0):
     
     last_time = time.time()
     while True:
-        #getting and resizing frame of video to 1/4 size for faster face recognition processing
+        #getting frame of video 
         _, frame = video_capture.read()
-        resized_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
 
         #converting the image from BGR color (which OpenCV uses) to RGB color (which face_recognition uses)
-        rgb_frame = resized_frame[:, :, ::-1]
+        rgb_frame = frame[:, :, ::-1]
 
         #procesing image only every 5 seconds   
         if (time.time() - last_time) > 5:
@@ -85,7 +95,8 @@ def face_recog_live(camera_address=0):
                     if name:
                         now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
                         print(f'{name} was recognized at {now}')
-                        #enc.populate_table_with_picture(picture_data=(name, frame.tobytes(), unknown_face_enconding))
+                        # ic(rgb_frame,unknown_face_enconding)
+                        dm.insert_picture_discovered(name, rgb_frame, unknown_face_enconding)
             last_time = time.time()
 
 
@@ -107,9 +118,13 @@ if __name__ == "__main__":
                 dm.insert_picture_file(sys.argv[2])
             elif sys.argv[1] == '--face-recognition':
                 face_recog_file(sys.argv[2])
+            elif sys.argv[1] == '--show-pics-db':
+                show_from_database()
         else:
             IP_camera_address = 'rtsp://gustavo:123456789Gu@10.0.0.121:554/Streaming/Channels/102'
-            face_recog_live(IP_camera_address)
+            #face_recog_live(IP_camera_address)
+            face_recog_live()
+
     except KeyboardInterrupt:
         print('\nbye')
     

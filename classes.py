@@ -4,10 +4,13 @@ from sqlalchemy.ext.declarative import declarative_base
 #setting up parameters
 _user = os.environ.get('MARIADB_USER')
 _password =  os.environ.get('MARIADB_PASSWORD')
+_host = '127.0.0.1'
+_port = '3306'
 _database = 'FaceRecog'
 
+
 #getting engine
-engine = sqlalchemy.create_engine(f'mariadb+mariadbconnector://{_user}:{_password}@127.0.0.1:3306/{_database}')
+engine = sqlalchemy.create_engine(f'mariadb+mariadbconnector://{_user}:{_password}@{_host}:{_port}/{_database}')
 
 #getting base for classes
 Base = declarative_base()
@@ -24,4 +27,5 @@ class Picture(Base):
 if __name__ == '__main__':
     #when runned as file, it'll to create all clases as tables on the database
     Base.metadata.create_all(engine)
+
 

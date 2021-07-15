@@ -1,6 +1,5 @@
 from classes import Picture, engine
 import sqlalchemy
-import encoder as enc
 import sys, copy, time
 
 Session = sqlalchemy.orm.sessionmaker()

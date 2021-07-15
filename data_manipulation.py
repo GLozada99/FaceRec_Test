@@ -1,8 +1,10 @@
-import io,os
+import io,os,sys
+from icecream import ic
 import numpy as np
 import face_recognition as fr
 import crud
 from PIL import Image
+from numpy_serializer import to_bytes, from_bytes
 from classes import Picture
 
 
@@ -16,10 +18,9 @@ def process_picture(path: str, large: bool=False) -> tuple[str, bytes, bytes]:
     pic = fr.load_image_file(path)
     face_encodings = fr.face_encodings(pic,model=mod)
     if face_encodings:
-        face_encoding = face_encodings[0].tobytes()
-        with open(path, 'rb') as fil:
-            raw_bin_pic = fil.read()
-            data = (name, raw_bin_pic, face_encoding)
+        face_encoding = to_bytes(face_encodings[0])
+        raw_bin_pic = to_bytes(np.asarray(pic)) 
+        data = (name, raw_bin_pic, face_encoding)
     
     return data  
 
@@ -27,14 +28,14 @@ def _byte_decode(face_bytes: bytes) -> np.ndarray:
     '''
     Decodes bytes into numpy array that represents a face. Returns decoded numpy array
     '''
-    face_encoding = np.frombuffer(face_bytes)
+    face_encoding = from_bytes(face_bytes)
     return face_encoding
 
 def _unprocess_picture(name, raw_bin_pic, face_encoding):
     '''
     Takes processed picture data and returns name, picture in bytes and numpy array of faces 
     '''
-    picture = Image.open(io.BytesIO(raw_bin_pic))
+    picture = _byte_decode(raw_bin_pic)
     face = _byte_decode(face_encoding)
     return name, picture, face
 
@@ -61,9 +62,10 @@ def insert_picture_file(path: str):
 def insert_picture_discovered(name, picture_frame, face_encoding):
     '''
     Inserts single picture into database. Used for frames taken live.
+    Bothe the picture_frame and the face_encoding must be arrays
     '''
-    picture_bytes = picture_frame.tobytes()
-    face_bytes = face_encoding.tobytes()
+    picture_bytes = to_bytes(picture_frame)
+    face_bytes = to_bytes(face_encoding)
     newPicture = Picture(name=name,picture_bytes=picture_bytes,face_bytes=face_bytes)
     crud.add_entry(newPicture)
 
