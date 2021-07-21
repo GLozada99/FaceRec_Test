@@ -5,7 +5,7 @@ import face_recognition as fr
 import crud
 from PIL import Image
 from numpy_serializer import to_bytes, from_bytes
-from classes import Picture
+import classes  
 
 
 def process_picture(path: str, large: bool=False) -> tuple[str, bytes, bytes]:
@@ -14,13 +14,13 @@ def process_picture(path: str, large: bool=False) -> tuple[str, bytes, bytes]:
     '''
     data = None
     mod = 'large' if large else 'small'
-    name = path.split('/')[-1].split('.')[0].split('_')[0]
+    person_id = path.split('/')[-1].split('.')[0].split('_')[0]
     pic = fr.load_image_file(path)
     face_encodings = fr.face_encodings(pic,model=mod)
     if face_encodings:
         face_encoding = to_bytes(face_encodings[0])
         raw_bin_pic = to_bytes(np.asarray(pic)) 
-        data = (name, raw_bin_pic, face_encoding)
+        data = (person_id, raw_bin_pic, face_encoding)
     
     return data  
 
@@ -31,13 +31,13 @@ def _byte_decode(face_bytes: bytes) -> np.ndarray:
     face_encoding = from_bytes(face_bytes)
     return face_encoding
 
-def _unprocess_picture(name, raw_bin_pic, face_encoding):
+def _unprocess_picture(person_id, raw_bin_pic, face_encoding):
     '''
     Takes processed picture data and returns name, picture in bytes and numpy array of faces 
     '''
     picture = _byte_decode(raw_bin_pic)
     face = _byte_decode(face_encoding)
-    return name, picture, face
+    return person_id, picture, face
 
 def insert_picture_directory(path: str):
     '''
@@ -46,18 +46,25 @@ def insert_picture_directory(path: str):
     for root,_,files in os.walk(path,topdown=True):
         for name in files:
             pic_address = os.path.join(root, name)
-            name, picture_bytes, face_bytes = process_picture(pic_address,True)
-            newPicture = Picture(name=name,picture_bytes=picture_bytes,face_bytes=face_bytes)
-            crud.add_entry(newPicture)
+            person_id, picture_bytes, face_bytes = process_picture(pic_address,True)
+            newPicture = classes.Picture(person_id=person_id,picture_bytes=picture_bytes,face_bytes=face_bytes)
+            if crud.get_entry(classes.Person, person_id):
+                crud.add_entry(newPicture)
+            else:
+                print(f'No hay una persona registrada con el id {person_id}')
 
 def insert_picture_file(path: str):
     '''
     Inserts single picture into database, given it's path
     '''
     pic_address = path
-    name, picture_bytes, face_bytes = process_picture(pic_address,True)
-    newPicture = Picture(name=name,picture_bytes=picture_bytes,face_bytes=face_bytes)
-    crud.add_entry(newPicture)
+    person_id, picture_bytes, face_bytes = process_picture(pic_address,True)
+    newPicture = classes.Picture(person_id=person_id,picture_bytes=picture_bytes,face_bytes=face_bytes)
+    if crud.get_entry(classes.Person, person_id):
+        crud.add_entry(newPicture)
+    else:
+        print(f'No hay una persona registrada con el id {person_id}')
+        sys.exit(1)
 
 def insert_picture_discovered(name, picture_frame, face_encoding):
     '''
