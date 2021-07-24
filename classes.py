@@ -51,7 +51,6 @@ class Picture(Base):
     person_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('persons.id'))
     picture_bytes = sqlalchemy.Column(sqlalchemy.dialects.mysql.LONGBLOB)
     face_bytes = sqlalchemy.Column(sqlalchemy.dialects.mysql.LONGBLOB)
-    
     person = sqlalchemy.orm.relationship("Person", back_populates="pictures")
 
 class Vaccine(Base):
