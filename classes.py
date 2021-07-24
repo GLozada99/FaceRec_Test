@@ -22,7 +22,7 @@ class Picture(Base):
     name = sqlalchemy.Column(sqlalchemy.String(length=30))
     picture_bytes = sqlalchemy.Column(sqlalchemy.dialects.mysql.LONGBLOB)
     face_bytes = sqlalchemy.Column(sqlalchemy.dialects.mysql.LONGBLOB)
-
+'''
 class Employee(Base):
     __tablename__ = 'empleado'
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
@@ -45,7 +45,7 @@ class Poncheo(Base):
     id_empleado = sqlalchemy.Column(sqlalchemy.Integer)
     action = sqlalchemy.Column(sqlalchemy.String(length=7)) #entrada o salida
     time_action = sqlalchemy.Column(sqlalchemy.DateTime) #sea entrada o salida, tendra la hora de este
-
+'''
 
 if __name__ == '__main__':
     #when runned as file, it'll to create all clases as tables on the database
