@@ -188,7 +188,6 @@ def face_recog_live(camera_address=0):
                         dm.insert_picture_discovered(name, rgb_frame, unknown_face_enconding)
             last_time = time.time()
 
-
         cv2.imshow('Video', frame)
         
         if cv2.waitKey(1) & 0xFF == ord('q'):

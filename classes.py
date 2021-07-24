@@ -5,12 +5,12 @@ from sqlalchemy.ext.declarative import declarative_base
 _user = os.environ.get('MARIADB_USER')
 _password =  os.environ.get('MARIADB_PASSWORD')
 _host = '127.0.0.1'
-_port = '3306'
-_database = 'Face_Recognition'
+_port = '5432' #database port
+_database = 'face_recognition'
 
 
 #getting engine
-engine = sqlalchemy.create_engine(f'mariadb+mariadbconnector://{_user}:{_password}@{_host}:{_port}/{_database}')
+engine = sqlalchemy.create_engine(f'postgresql+psycopg2://{_user}:{_password}@{_host}:{_port}/{_database}')
 
 #getting base for classes
 Base = declarative_base()
@@ -49,8 +49,8 @@ class Picture(Base):
     __tablename__ = 'pictures'
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
     person_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('persons.id'))
-    picture_bytes = sqlalchemy.Column(sqlalchemy.dialects.mysql.LONGBLOB)
-    face_bytes = sqlalchemy.Column(sqlalchemy.dialects.mysql.LONGBLOB)
+    picture_bytes = sqlalchemy.Column(sqlalchemy.dialects.postgresql.BYTEA)
+    face_bytes = sqlalchemy.Column(sqlalchemy.dialects.postgresql.BYTEA)
     person = sqlalchemy.orm.relationship("Person", back_populates="pictures")
 
 class Vaccine(Base):
