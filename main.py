@@ -1,15 +1,13 @@
 import data_manipulation as dm
-import sys, time, os
+import numpy as np
+import sys, time, os, argparse
 import face_recognition
 from PIL import Image
 from icecream import ic
 from cv2 import cv2
-
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input #pylint: disable=no-name-in-module
 from tensorflow.keras.preprocessing.image import img_to_array #pylint: disable=no-name-in-module
 from tensorflow.keras.models import load_model #pylint: disable=no-name-in-module
-import numpy as np
-import argparse
 
 def show_pics(unknown, known):
     '''
@@ -21,7 +19,7 @@ def show_pics(unknown, known):
     u_pic.show()
 
 def show_from_database():
-    dat = dm.get_work_data() #returns name, picture in bytes and numpy array of faces 
+    dat = dm.get_pictures() #returns name, picture in bytes and numpy array of faces 
     faces_data = list(zip(*dat))[1]
     print(len(faces_data))
     for i in range(15,len(faces_data)):
@@ -51,7 +49,7 @@ def face_recog_file(picture_path):
 
     #getting data of known pictures through database
     #dat is a list of (Name, Picture, Face array)
-    dat = dm.get_work_data()
+    dat = dm.get_pictures()
     known_faces_encoding = list(zip(*dat))[2]
 
     #comparing and finding out if there's a match
@@ -128,70 +126,108 @@ def detect_and_predict_mask(frame, faceNet, maskNet):
     # locations
     return (locs, preds)
 
-        
+def has_mask(frame, faceNet, maskNet):
+    has_mask = None
+    _, preds = detect_and_predict_mask(frame, faceNet, maskNet)
+
+    if len(preds) > 0:
+        mask, without_mask = preds[0] #each pred is a tuple of probability of having and not having mask in a face. Only first face is taken
+        has_mask = True if mask > without_mask else False
+    
+    return has_mask #True means it has mask, False means it doesn't and None means there's no face on the picture
+
+def has_time_passed(time_since, interval): #returns true if interval of time has passed since a specific time
+    return True if (time.time() - time_since) > interval else False
+
 
 def face_recog_live(camera_address=0):
-    '''
-    Applies face recognition to live streaming from camera using rtsp
-    If theres no camera the PC's camera will be used
-    '''
-
-    dat = dm.get_work_data() #returns name, picture in bytes and numpy array of faces 
-    faces_data = list(zip(*dat))[2] #
-
-    #getting VideoCapture object from device
-    video_capture = cv2.VideoCapture(camera_address)
-    time.sleep(2.0)
     
-    last_time = time.time()
-    last_time2 = time.time()
-    #mask_flag = False
-    #face_flag = False
+    pics = dm.get_pictures() #list of tuples (person_id, face_enconding)
+    person_ids = []
+    encodings = []
+    for person_id, encoding in pics:
+        person_ids.append(person_id)
+        encodings.append(encoding)
+
+    video_capture = cv2.VideoCapture(camera_address)#starting camera
+    time.sleep(2.0)
+
+    
+    mask_detection_flag = False #indicates a mask has been detected
+    face_recognition_flag = False #indicates a face has been recognized
+
+    MASK_DETECT_INTERVAL = 5 #time interval in seconds for calling mask detection function
+    FACE_RECOG_INTERVAL = 5 #time interval in seconds for calling face recognition function
+    TIME_START_AGAIN = 5 #time interval in seconds for start everything again after opening a door
+    WINDOW_TIME_SINCE = 20 #time interval in seconds a person has to remove it's mask after it has been detected for face recog, o time it has to put a mask on after it's face has been recognized  
+
+    time_mask_detection = time.time() #timestamp for last time since has_mask was called, to only call every 'MASK_DETECT_INTERVAL' seconds
+    time_face_recognition = time.time() #timestamp for last time compare_faces was called, to only call every 'FACE_RECOG_INTERVAL' seconds
+    time_since_mask = time.time() #timestamp for mask being detected, to allow for a window in which mask_detection_flag will be true
+    time_since_face = time.time() #timestamp for face being recognized, to allow for a window in which face_recognition_flag will be true
+    time_welcomed = time.time() #timestamp for when person was welcomed (face and mask were approved)
+    
     while True:
-        #getting frame of video 
-        _, frame = video_capture.read()
 
-        if (time.time() - last_time2) > 2:
-            _, preds = detect_and_predict_mask(frame, faceNet, maskNet)
-            
-            mask_detected = None
-            pred = None
-            if len(preds) > 0:
-                pred = preds[0]
-                mask, without_mask = pred
-                mask_detected = True if mask > without_mask else False
+        _, frame = video_capture.read()#getting frame
+        cv2.imshow('Video', frame) #showing video
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
-                if mask_detected:
-                    print('Mascarilla detectada. Por favor, remuevala momentaneamente')
-            last_time2 = time.time()
-                
+        mask = None
 
-        mask_detected = False
-        #procesing image only every 5 seconds and only if there's no mask
-        if (time.time() - last_time) > 5 and not mask_detected:
-            #converting the image from BGR color (which OpenCV uses) to RGB color (which face_recognition uses)
+        if not has_time_passed(time_welcomed,TIME_START_AGAIN): #if time since last welcome is less than TIME_START_AGAIN, continue with the loop
+            continue
+        
+        #mask detection and face recognition flags will only stay true for WINDOW_TIME_SINCE seconds
+        if has_time_passed(time_since_mask,WINDOW_TIME_SINCE): 
+            mask_detection_flag = False
+        if has_time_passed(time_since_face,WINDOW_TIME_SINCE):
+            face_recognition_flag = False
+        
+        #only making mask (and person) comprobation every MASK_DETECT_INTERVAL seconds
+        if has_time_passed(time_mask_detection, MASK_DETECT_INTERVAL):
+            mask = has_mask(frame, faceNet, maskNet)
+            time_mask_detection = time.time()
+
+        if mask == None: #if no face was detected, get another frame
+            continue
+        
+        if mask:
+            mask_detection_flag = True
+            time_since_mask = time.time() #takes time since mask was detected to allow for 'FACE_RECOG_INTERVAL' seconds at most for face recognition
+            if not face_recognition_flag: #No face recog flag means that's the only thing left for welcoming. Because there's a mask, the person is asked to remove it for the face_recognition to begin
+                print('Se ha detectado mascarilla. Remuevala momentaneamente')
+        elif has_time_passed(time_face_recognition, FACE_RECOG_INTERVAL) and not face_recognition_flag: #only if there's no mask, a face hadn't been recognized and time has passed since last face recognition there'll be a face recognition
             rgb_frame = frame[:, :, ::-1]
-
             face_locations = face_recognition.face_locations(rgb_frame)
             unknown_face_encondings = face_recognition.face_encodings(rgb_frame, face_locations)
             if unknown_face_encondings:
                 unknown_face_enconding = unknown_face_encondings[0]
-                results = face_recognition.compare_faces(faces_data, unknown_face_enconding)
-                face_distances = face_recognition.face_distance(faces_data, unknown_face_enconding)
+                results = face_recognition.compare_faces(encodings, unknown_face_enconding)
+                face_distances = face_recognition.face_distance(encodings, unknown_face_enconding)
                 best_match_index = np.argmin(face_distances)
                 if results[best_match_index]:
-                    name = dat[best_match_index][0]
-                    if name:
-                        now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-                        print(f'{name} was recognized at {now}')
-                        # ic(rgb_frame,unknown_face_enconding)
-                        dm.insert_picture_discovered(name, rgb_frame, unknown_face_enconding)
-            last_time = time.time()
-
-        cv2.imshow('Video', frame)
+                    person_id = person_ids[best_match_index]    
+                    now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+                    print(f'Se reconoció a la persona con id: {person_id}, en la fecha {now}')
+                    face_recognition_flag = True
+                    time_since_face = time.time()
+                    dm.insert_picture_discovered(person_id, rgb_frame, unknown_face_enconding)
+                    if not mask_detection_flag:
+                        print('No se ha detectado mascarilla. Póngasela')
         
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+        if face_recognition_flag and mask_detection_flag: #after a face has been recognized and a mask has been detected, the door will open and all control variables will reset to original state
+            mask_detection_flag = False
+            face_recognition_flag = False
+
+            time_mask_detection = time.time() 
+            time_face_recognition = time.time() 
+            time_since_mask = time.time() 
+            time_since_face = time.time() 
+            time_welcomed = time.time()
+            print('Bienvenido')
+            #open door
     
     video_capture.release()
     cv2.destroyAllWindows()
@@ -201,43 +237,29 @@ maskNet = None
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("-f", "--face", type=str,
-        default="face_detector",
+    ap.add_argument("-f", "--face", type=str,default="face_detector",
         help="path to face detector model directory")
-    ap.add_argument("-m", "--model", type=str,
-        default="mask_detector.model",
+    ap.add_argument("-m", "--model", type=str,default="mask_detector.model",
         help="path to trained face mask detector model")
     ap.add_argument("-c", "--confidence", type=float, default=0.5,
         help="minimum probability to filter weak detections")
-    args = vars(ap.parse_args())
+    ap.add_argument('--add-picture-file', action='store')
+    ap.add_argument('--add-picture-directory', action='store')
+    ap.add_argument('--face-recog-live', action='store_true')
+    args = vars(ap.parse_args())    
 
-    # load our serialized face detector model from disk
-    print("[INFO] loading face detector model...")
-    prototxtPath = os.path.sep.join([args["face"], "deploy.prototxt"])
-    weightsPath = os.path.sep.join([args["face"],
+    if args['face_recog_live']:
+        # load our serialized face detector model from disk
+        prototxtPath = os.path.sep.join([args["face"], "deploy.prototxt"])
+        weightsPath = os.path.sep.join([args["face"],
         "res10_300x300_ssd_iter_140000.caffemodel"])
-    faceNet = cv2.dnn.readNet(prototxtPath, weightsPath)
+        faceNet = cv2.dnn.readNet(prototxtPath, weightsPath)
 
-    # load the face mask detector model from disk
-    print("[INFO] loading face mask detector model...")
-    maskNet = load_model(args["model"])
-
-    try:
-        if len(sys.argv) == 3:
-            if sys.argv[1] == '--add-directory':
-                dm.insert_picture_directory(sys.argv[2])
-            elif sys.argv[1] == '--add-file':
-                dm.insert_picture_file(sys.argv[2])
-            elif sys.argv[1] == '--face-recognition':
-                face_recog_file(sys.argv[2])
-            elif sys.argv[1] == '--show-pics-db':
-                show_from_database()
-        else:
-            IP_camera_address = 'rtsp://gustavo:123456789Gu@10.0.0.121:554/Streaming/Channels/102'
-            face_recog_live(IP_camera_address)
-            #face_recog_live()
-
-    except KeyboardInterrupt:
-        print('\nbye')
-    
-    
+        # load the face mask detector model from disk
+        maskNet = load_model(args["model"])
+        
+        # IP_camera_address = 'rtsp://gustavo:123456789Gu@10.0.0.121:554/Streaming/Channels/102'
+        # face_recog_live(IP_camera_address)
+        face_recog_live()
+    elif args['add_picture_directory']:
+        dm.insert_picture_directory(args['add_picture_directory'])

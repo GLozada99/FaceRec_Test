@@ -1,6 +1,7 @@
 import sqlalchemy, os
 from sqlalchemy.ext.declarative import declarative_base
 
+
 #setting up parameters
 _user = os.environ.get('MARIADB_USER')
 _password =  os.environ.get('MARIADB_PASSWORD')
@@ -24,8 +25,8 @@ class Person(Base):
     first_name = sqlalchemy.Column(sqlalchemy.String(length=30))
     last_name = sqlalchemy.Column(sqlalchemy.String(length=30))
     birth_date = sqlalchemy.Column(sqlalchemy.Date)
-    is_employee = sqlalchemy.Column(sqlalchemy.Boolean)
-    active = sqlalchemy.Column(sqlalchemy.Boolean)
+    is_employee = sqlalchemy.Column(sqlalchemy.Boolean, default=False)
+    active = sqlalchemy.Column(sqlalchemy.Boolean, default=True)
     
     employee = sqlalchemy.orm.relationship("Employee", back_populates="person")
     pictures = sqlalchemy.orm.relationship("Picture", back_populates="person")
@@ -74,9 +75,18 @@ class Time_Entry(Base):
 if __name__ == '__main__':
     #when runned as file, it'll to create all clases as tables on the database
     Base.metadata.create_all(engine)
+    
     # import datetime, crud
-    # per = Person(identification_document='001-1-0', first_name='Gus', last_name='Loz', birth_date=datetime.datetime.now(), is_employee=True, active=True )
+    # per = Person(identification_document='402-1383575-0', first_name='Gustavo', last_name='Lozada', birth_date=datetime.datetime(1999,10,9))
     # crud.add_entry(per)
+    # per = Person(identification_document='412-6483594-8', first_name='Diogenes', last_name='Vargas', birth_date=datetime.datetime(1999,3,19))
+    # crud.add_entry(per)
+    # per = Person(identification_document='412-4597816-8', first_name='David', last_name='Vazquez', birth_date=datetime.datetime(1999,7,22))
+    # crud.add_entry(per)
+    # per = Person(identification_document='412-9768438-8', first_name='Lia', last_name='Lozada', birth_date=datetime.datetime(2009,5,10))
+    # crud.add_entry(per)
+
+    
     # vac = Vaccine(person_id=1,dose_type='Pfizer2',dose_date=datetime.datetime.now())
     # crud.add_entry(vac)
 
