@@ -59,7 +59,7 @@ def insert_picture_directory(path: str):
                 crud.add_entry(newPicture)
             else:
                 print(f'No hay una persona registrada con el id {person_id}')
-
+    
 def insert_picture_file(path: str):
     '''
     Inserts single picture into database, given it's path

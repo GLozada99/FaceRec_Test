@@ -32,6 +32,9 @@ class Person(Base):
     pictures = sqlalchemy.orm.relationship("Picture", back_populates="person")
     vaccines = sqlalchemy.orm.relationship("Vaccine", back_populates="person")
     time_entries = sqlalchemy.orm.relationship("Time_Entry", back_populates="person")
+
+    def __str__(self):
+        return f'id: {self.id}, nombre: {self.first_name} {self.last_name}'  
     
 
 class Employee(Base):

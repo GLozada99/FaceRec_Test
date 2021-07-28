@@ -2,6 +2,7 @@ import data_manipulation as dm
 import numpy as np
 import sys, time, os, argparse
 import face_recognition
+import crud, classes
 from PIL import Image
 from icecream import ic
 from cv2 import cv2
@@ -49,18 +50,27 @@ def face_recog_file(picture_path):
 
     #getting data of known pictures through database
     #dat is a list of (Name, Picture, Face array)
-    dat = dm.get_pictures()
-    known_faces_encoding = list(zip(*dat))[2]
+    pics = dm.get_pictures() #list of tuples (person_id, face_enconding)
+    person_ids = []
+    encodings = []
+    for person_id, encoding in pics:
+        person_ids.append(person_id)
+        encodings.append(encoding)
 
     #comparing and finding out if there's a match
-    results = face_recognition.compare_faces(known_faces_encoding, unknown_face_enconding,0.6)
-
-    face_distances = face_recognition.face_distance(known_faces_encoding, unknown_face_enconding)
+    results = face_recognition.compare_faces(encodings, unknown_face_enconding,0.6)
+    face_distances = face_recognition.face_distance(encodings, unknown_face_enconding)
     best_match_index = np.argmin(face_distances)
+    ic(results,person_ids, face_distances, best_match_index)
+    
     if results[best_match_index]:
-        name = dat[best_match_index][0] 
-        if name:
-            print(f'{name} was recognized')
+        p_id = person_ids[best_match_index]
+        if p_id:
+            person = crud.get_entry(classes.Person, p_id)
+            print(f'Se reconoció a la persona {person}')
+        else:
+            print(f'No se reconoció a nadie')
+
 
     #showing unknown image and its better match
     # best_known_picture = dat[best_match_index][1]
@@ -122,8 +132,7 @@ def detect_and_predict_mask(frame, faceNet, maskNet):
         faces = np.array(faces, dtype="float32")
         preds = maskNet.predict(faces, batch_size=32)
 
-    # return a 2-tuple of the face locations and their corresponding
-    # locations
+    # return a 2-tuple of the face locations and their corresponding predictions
     return (locs, preds)
 
 def has_mask(frame, faceNet, maskNet):
@@ -208,13 +217,18 @@ def face_recog_live(camera_address=0):
                 face_distances = face_recognition.face_distance(encodings, unknown_face_enconding)
                 best_match_index = np.argmin(face_distances)
                 if results[best_match_index]:
-                    person_id = person_ids[best_match_index]    
+                    p_id = person_ids[best_match_index]    
+                    
                     now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-                    print(f'Se reconoció a la persona con id: {person_id}, en la fecha {now}')
+                    person = crud.get_entry(classes.Person, p_id)
+                    print(f'Se reconoció a la persona {person}, en la fecha {now}')
+                    
                     face_recognition_flag = True
                     time_since_face = time.time()
-                    dm.insert_picture_discovered(person_id, rgb_frame, unknown_face_enconding)
-                    if not mask_detection_flag:
+                    #dm.insert_picture_discovered(person_id, rgb_frame, unknown_face_enconding)
+                    if mask_detection_flag:
+                        print('Recuerde subir su mascarilla')
+                    else:
                         print('No se ha detectado mascarilla. Póngasela')
         
         if face_recognition_flag and mask_detection_flag: #after a face has been recognized and a mask has been detected, the door will open and all control variables will reset to original state
@@ -237,15 +251,17 @@ maskNet = None
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("-f", "--face", type=str,default="face_detector",
+    ap.add_argument("-f", "--face", type=str,default="MaskDetection/face_detector",
         help="path to face detector model directory")
-    ap.add_argument("-m", "--model", type=str,default="mask_detector.model",
+    ap.add_argument("-m", "--model", type=str,default="MaskDetection/mask_detector.model",
         help="path to trained face mask detector model")
     ap.add_argument("-c", "--confidence", type=float, default=0.5,
         help="minimum probability to filter weak detections")
     ap.add_argument('--add-picture-file', action='store')
     ap.add_argument('--add-picture-directory', action='store')
     ap.add_argument('--face-recog-live', action='store_true')
+    ap.add_argument('--face-recog-file', action='store')
+    
     args = vars(ap.parse_args())    
 
     if args['face_recog_live']:
@@ -263,3 +279,5 @@ if __name__ == "__main__":
         face_recog_live()
     elif args['add_picture_directory']:
         dm.insert_picture_directory(args['add_picture_directory'])
+    elif args['face_recog_file']:
+        face_recog_file(args['face_recog_file'])
