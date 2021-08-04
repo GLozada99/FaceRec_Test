@@ -10,24 +10,23 @@ from tensorflow.keras.applications.mobilenet_v2 import preprocess_input #pylint:
 from tensorflow.keras.preprocessing.image import img_to_array #pylint: disable=no-name-in-module
 from tensorflow.keras.models import load_model #pylint: disable=no-name-in-module
 
-def show_pics(unknown, known):
+def show_pic(picture_array):
     '''
-    Shows unknown picture and the known picture that it resembles the most
+    Shows picture
     '''
-    k_pic = Image.fromarray(known)
-    u_pic = Image.fromarray(unknown)
-    k_pic.show()
-    u_pic.show()
+    pic_p = face_recognition.load_image_file('KnownIMGs/7_1.jpeg')
+    print(pic_p == picture_array)
+    Image.fromarray(picture_array).show()
+    
 
 def show_from_database():
-    dat = dm.get_pictures() #returns name, picture in bytes and numpy array of faces 
-    faces_data = list(zip(*dat))[1]
-    print(len(faces_data))
-    for i in range(15,len(faces_data)):
-        face = faces_data[i]
-        pic = Image.fromarray(face)
-        print(i)
-        pic.show()
+    '''
+    Shows all pictures from database
+    '''
+    pics = dm.get_pictures() #list of tuples (person_id, face_enconding)
+    for _, pictures in pics:
+        show_pic(pictures)
+        
 
 def face_recog_file(picture_path):
     '''
@@ -50,7 +49,7 @@ def face_recog_file(picture_path):
 
     #getting data of known pictures through database
     #dat is a list of (Name, Picture, Face array)
-    pics = dm.get_pictures() #list of tuples (person_id, face_enconding)
+    pics = dm.get_pictures_encodings() #list of tuples (person_id, face_enconding)
     person_ids = []
     encodings = []
     for person_id, encoding in pics:
@@ -149,9 +148,9 @@ def has_time_passed(time_since, interval): #returns true if interval of time has
     return True if (time.time() - time_since) > interval else False
 
 
-def face_recog_live(camera_address=0):
+def face_recog_live(faceNet,maskNet,camera_address=0):
     
-    pics = dm.get_pictures() #list of tuples (person_id, face_enconding)
+    pics = dm.get_pictures_encodings() #list of tuples (person_id, face_enconding)
     person_ids = []
     encodings = []
     for person_id, encoding in pics:
@@ -235,10 +234,10 @@ def face_recog_live(camera_address=0):
             mask_detection_flag = False
             face_recognition_flag = False
 
-            time_mask_detection = time.time() 
-            time_face_recognition = time.time() 
-            time_since_mask = time.time() 
-            time_since_face = time.time() 
+            time_mask_detection = time.time()
+            time_face_recognition = time.time()
+            time_since_mask = time.time()
+            time_since_face = time.time()
             time_welcomed = time.time()
             print('Bienvenido')
             #open door
@@ -246,10 +245,7 @@ def face_recog_live(camera_address=0):
     video_capture.release()
     cv2.destroyAllWindows()
 
-faceNet = None
-maskNet = None
-
-if __name__ == "__main__":
+def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("-f", "--face", type=str,default="MaskDetection/face_detector",
         help="path to face detector model directory")
@@ -261,6 +257,7 @@ if __name__ == "__main__":
     ap.add_argument('--add-picture-directory', action='store')
     ap.add_argument('--face-recog-live', action='store_true')
     ap.add_argument('--face-recog-file', action='store')
+    ap.add_argument('--show-pictures-database', action='store_true')
     
     args = vars(ap.parse_args())    
 
@@ -275,9 +272,16 @@ if __name__ == "__main__":
         maskNet = load_model(args["model"])
         
         # IP_camera_address = 'rtsp://gustavo:123456789Gu@10.0.0.121:554/Streaming/Channels/102'
-        # face_recog_live(IP_camera_address)
-        face_recog_live()
+        # face_recog_live(faceNet,maskNet,IP_camera_address)
+        face_recog_live(faceNet,maskNet)
     elif args['add_picture_directory']:
         dm.insert_picture_directory(args['add_picture_directory'])
     elif args['face_recog_file']:
         face_recog_file(args['face_recog_file'])
+    elif args['show_pictures_database']:
+        show_from_database()
+
+
+
+if __name__ == "__main__":
+    main()

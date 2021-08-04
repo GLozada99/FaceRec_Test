@@ -28,7 +28,7 @@ class Person(Base):
     is_employee = sqlalchemy.Column(sqlalchemy.Boolean, default=False)
     active = sqlalchemy.Column(sqlalchemy.Boolean, default=True)
     
-    employee = sqlalchemy.orm.relationship("Employee", back_populates="person")
+    employee = sqlalchemy.orm.relationship("Employee", back_populates="person",uselist=False)
     pictures = sqlalchemy.orm.relationship("Picture", back_populates="person")
     vaccines = sqlalchemy.orm.relationship("Vaccine", back_populates="person")
     time_entries = sqlalchemy.orm.relationship("Time_Entry", back_populates="person")
@@ -44,7 +44,7 @@ class Employee(Base):
     salary = sqlalchemy.Column(sqlalchemy.Float)
     email = sqlalchemy.Column(sqlalchemy.String(length=30))
     start_date = sqlalchemy.Column(sqlalchemy.Date)
-    vacations_since = sqlalchemy.Column(sqlalchemy.Date) 
+    vacations_since = sqlalchemy.Column(sqlalchemy.Date)
 
     person = sqlalchemy.orm.relationship("Person", back_populates="employee")
     #Sintomas y lo demas referente a enfermedades y/o covid pendiente
@@ -56,6 +56,7 @@ class Picture(Base):
     picture_bytes = sqlalchemy.Column(sqlalchemy.dialects.postgresql.BYTEA)
     face_bytes = sqlalchemy.Column(sqlalchemy.dialects.postgresql.BYTEA)
     person = sqlalchemy.orm.relationship("Person", back_populates="pictures")
+    time_entry = sqlalchemy.orm.relationship("Time_Entry", back_populates="pictures",uselist=False)
 
 class Vaccine(Base):
     __tablename__ = 'vaccines'
@@ -70,10 +71,12 @@ class Time_Entry(Base):
     __tablename__ = 'time_entries'
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
     person_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('persons.id'))
+    picture_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('pictures.id')) #id de la foto cuando se registre la acción
     action = sqlalchemy.Column(sqlalchemy.String(length=7)) #entrada o salida
     action_time = sqlalchemy.Column(sqlalchemy.DateTime) #sea entrada o salida, tendra la hora de este
 
     person = sqlalchemy.orm.relationship("Person", back_populates="time_entries")
+    picture = sqlalchemy.orm.relationship("Picture", back_populates="time_entries")
 
 if __name__ == '__main__':
     #when runned as file, it'll to create all clases as tables on the database
