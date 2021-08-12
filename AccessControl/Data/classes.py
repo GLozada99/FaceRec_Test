@@ -18,6 +18,12 @@ Base = declarative_base()
 
 #creating clases
 
+def as_dict(self):
+    '''
+    Receives an object and returns it as a dict with all its fields as key/value pairs 
+    '''
+    return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
 class Person(Base):
     __tablename__ = 'persons'
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
@@ -56,7 +62,7 @@ class Picture(Base):
     picture_bytes = sqlalchemy.Column(sqlalchemy.dialects.postgresql.BYTEA)
     face_bytes = sqlalchemy.Column(sqlalchemy.dialects.postgresql.BYTEA)
     person = sqlalchemy.orm.relationship("Person", back_populates="pictures")
-    time_entry = sqlalchemy.orm.relationship("Time_Entry", back_populates="pictures",uselist=False)
+    time_entry = sqlalchemy.orm.relationship("Time_Entry", back_populates="picture",uselist=False)
 
 class Vaccine(Base):
     __tablename__ = 'vaccines'
@@ -76,7 +82,7 @@ class Time_Entry(Base):
     action_time = sqlalchemy.Column(sqlalchemy.DateTime) #sea entrada o salida, tendra la hora de este
 
     person = sqlalchemy.orm.relationship("Person", back_populates="time_entries")
-    picture = sqlalchemy.orm.relationship("Picture", back_populates="time_entries")
+    picture = sqlalchemy.orm.relationship("Picture", back_populates="time_entry")
 
 if __name__ == '__main__':
     #when runned as file, it'll to create all clases as tables on the database

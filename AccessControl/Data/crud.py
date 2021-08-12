@@ -1,9 +1,9 @@
-from classes import Picture, engine
+import AccessControl.Data.classes as classes
 import sqlalchemy
 import sys, copy, time
 
 Session = sqlalchemy.orm.sessionmaker()
-Session.configure(bind=engine)
+Session.configure(bind=classes.engine)
 _session = Session()
 
 def add_entry(entry):

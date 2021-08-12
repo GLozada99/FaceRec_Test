@@ -1,13 +1,12 @@
 import io,os,sys
-from icecream import ic
-import numpy as np
 import face_recognition as fr
-import crud
+import numpy as np
+import AccessControl.Data.crud as crud
+import AccessControl.Data.classes as classes  
+from icecream import ic
 from PIL import Image
 from numpy_serializer import to_bytes, from_bytes
 from cv2 import cv2
-import base64
-import classes  
 
 
 def process_picture_path(path: str, large: bool=False) -> tuple[str, bytes, bytes]:
@@ -107,17 +106,7 @@ def get_pictures_encodings():
         person_id = pic.person_id
         face_encodings = _unprocess_picture(pic.face_bytes)
         pic_list.append((person_id,face_encodings))
-    return pic_list
 
-def get_pictures():
-    '''
-    Returns list of tuples in the format (person_id, picture_array)
-    '''
-    pic_list = []
-    for pic in crud.get_entries(classes.Picture):
-        person_id = pic.person_id
-        picture = _unprocess_picture(pic.picture_bytes)
-        pic_list.append((person_id,picture))
     return pic_list
 
 
