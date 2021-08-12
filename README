@@ -1,0 +1,7 @@
+Para utilizar el proyecto y acceder a los módulos propios creados de manera adecuada, ejecutar en el directorio raiz:
+
+1. python -m venv venv
+2. source venv/bin/activate
+3. pip install -r AccessControl/requirements.txt
+4. pip install -e .
+
