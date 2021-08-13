@@ -88,15 +88,15 @@ if __name__ == '__main__':
     #when runned as file, it'll to create all clases as tables on the database
     Base.metadata.create_all(engine)
     
-    # import datetime, crud
-    # per = Person(identification_document='402-1383575-0', first_name='Gustavo', last_name='Lozada', birth_date=datetime.datetime(1999,10,9))
-    # crud.add_entry(per)
-    # per = Person(identification_document='412-6483594-8', first_name='Diogenes', last_name='Vargas', birth_date=datetime.datetime(1999,3,19))
-    # crud.add_entry(per)
-    # per = Person(identification_document='412-4597816-8', first_name='David', last_name='Vazquez', birth_date=datetime.datetime(1999,7,22))
-    # crud.add_entry(per)
-    # per = Person(identification_document='412-9768438-8', first_name='Lia', last_name='Lozada', birth_date=datetime.datetime(2009,5,10))
-    # crud.add_entry(per)
+    import datetime, crud
+    per = Person(identification_document='402-1383575-0', first_name='Gustavo', last_name='Lozada', birth_date=datetime.datetime(1999,10,9))
+    crud.add_entry(per)
+    per = Person(identification_document='412-6483594-8', first_name='Diogenes', last_name='Vargas', birth_date=datetime.datetime(1999,3,19))
+    crud.add_entry(per)
+    per = Person(identification_document='412-4597816-8', first_name='David', last_name='Vazquez', birth_date=datetime.datetime(1999,7,22))
+    crud.add_entry(per)
+    per = Person(identification_document='412-9768438-8', first_name='Lia', last_name='Lozada', birth_date=datetime.datetime(2009,5,10))
+    crud.add_entry(per)
 
     
     # vac = Vaccine(person_id=1,dose_type='Pfizer2',dose_date=datetime.datetime.now())

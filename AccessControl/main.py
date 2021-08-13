@@ -138,7 +138,8 @@ def has_mask(frame, faceNet, maskNet):
 
     if len(preds) > 0:
         mask, without_mask = preds[0] #each pred is a tuple of probability of having and not having mask in a face. Only first face is taken
-        has_mask = True if mask > without_mask else False
+        print(preds[0])
+        has_mask = True if mask > 0.90 else False
     
     return has_mask #True means it has mask, False means it doesn't and None means there's no face on the picture
 
@@ -261,6 +262,7 @@ def main():
 
     if args['face_recog_live']:
         # load our serialized face detector model from disk
+        print(os.path.abspath(args["face"]),os.path.abspath(args["model"]) )
         prototxtPath = os.path.sep.join([os.path.abspath(args["face"]), "deploy.prototxt"])
         weightsPath = os.path.sep.join([os.path.abspath(args["face"]),
         "res10_300x300_ssd_iter_140000.caffemodel"])
