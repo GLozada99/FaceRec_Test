@@ -8,12 +8,10 @@ from PIL import Image
 import AccessControl.Data.crud as crud
 import AccessControl.Data.classes as classes
 import AccessControl.Data.data_manipulation as dm
+import AccessControl.Functions.matrix_functions as mx
 from tensorflow.keras.preprocessing.image import img_to_array
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
-from nio import AsyncClient, MatrixRoom, RoomMessageText
 import asyncio
-
-data = []
 
 
 def show_pic_from_array(picture_array):
@@ -100,7 +98,7 @@ def detect_and_predict_mask(frame, faceNet, maskNet):
     return (locs, preds)
 
 
-def has_mask(frame, faceNet, maskNet):
+async def has_mask(frame, faceNet, maskNet):
     has_mask = None
     _, preds = detect_and_predict_mask(frame, faceNet, maskNet)
 
@@ -112,6 +110,26 @@ def has_mask(frame, faceNet, maskNet):
     # True means it has mask, False means it doesn't
     # None means there's no face on the picture
     return has_mask
+
+
+async def face_recog(frame, encodings):
+    rgb_frame = frame[:, :, ::-1]
+    face_locations = face_recognition.face_locations(rgb_frame)
+    unknown_face_encondings = face_recognition.face_encodings(
+        rgb_frame, face_locations)
+    result = False
+    best_match_index = 0
+    if unknown_face_encondings:
+        unknown_face_enconding = unknown_face_encondings[0]
+        results = face_recognition.compare_faces(
+            encodings, unknown_face_enconding)
+        face_distances = face_recognition.face_distance(
+            encodings, unknown_face_enconding)
+        if len(face_distances) > 0:
+            best_match_index = np.argmin(face_distances)
+            result = results[best_match_index]
+
+    return (result, best_match_index)
 
 
 def face_recog_file(picture_path, show_pictures=False):
@@ -182,30 +200,6 @@ async def face_recog_live(faceNet, maskNet, camera_address=0):
         person_ids.append(person_id)
         encodings.append(encoding)
 
-    video_capture = cv2.VideoCapture(camera_address)  # starting camera
-    time.sleep(2.0)
-
-    server = 'https://matrix-client.matrix.org'
-    user = '@tavo9:matrix.org'
-    password = 'O1KhpTBn7D47'
-    device_id = 'LYTVJFQRJG'
-
-    client = await matrix_login(server, user, password, device_id)
-
-    mask_detection_flag = False  # indicates a mask has been detected
-    face_recognition_flag = False  # indicates a face has been recognized
-    # indicates temperature has been comprobated and aprooved
-    temp_comprobation_flag = False
-
-    # time interval in seconds: TIIS
-    MASK_DETECT_INTERVAL = 5  # TIIS for calling mask detection function
-    FACE_RECOG_INTERVAL = 5  # TIIS for calling face recognition function
-    TEMP_COMPROBATION_INTERVAL = 10  # TIIS for calling temp comprobation function
-    TIME_START_AGAIN = 5    # TIIS for start again after opening a door
-    WINDOW_TIME_SINCE = 20  # TIIS a person has to remove it's mask
-    # after it has been detected for face recog
-    # or time it has to put a mask on after it's face has been recognized
-
     # timestamp for last time since has_mask was called,
     # to only call every 'MASK_DETECT_INTERVAL' seconds
     time_mask_detection = time.time()
@@ -232,6 +226,34 @@ async def face_recog_live(faceNet, maskNet, camera_address=0):
     # timestamp for when person was welcomed (face and mask were approved)
     time_welcomed = time.time()
 
+    video_capture = cv2.VideoCapture(camera_address)  # starting camera
+
+    server = 'https://matrix-client.matrix.org'
+    user = '@tavo9:matrix.org'
+    password = 'O1KhpTBn7D47'
+    device_id = 'LYTVJFQRJG'
+    temper_room_name = '#temper:matrix.org'
+    speaker_room_name = '#speaker:matrix.org'
+
+    client = await mx.matrix_login(server, user, password, device_id)
+    temper_room_id = await mx.matrix_get_room_id(client, temper_room_name)
+    speaker_room_id = await mx.matrix_get_room_id(client, speaker_room_name)
+
+    mask_detection_flag = False  # indicates a mask has been detected
+    face_recognition_flag = False  # indicates a face has been recognized
+    # indicates temperature has been comprobated and aprooved
+    temp_comprobation_flag = False
+
+    # time interval in seconds: TIIS
+    MASK_DETECT_INTERVAL = 5  # TIIS for calling mask detection function
+    FACE_RECOG_INTERVAL = 8  # TIIS for calling face recognition function
+    TEMP_COMPROBATION_INTERVAL = 10  # TIIS for calling temp comprobation function
+    TIME_START_AGAIN = 20  # TIIS for start again after opening a door
+    WINDOW_TIME_SINCE = 35  # TIIS a person has to remove it's mask
+    # after it has been detected for face recog
+    # or time it has to put a mask on after it's face has been recognized
+    messages = []
+    message_task = None
     while True:
 
         _, frame = video_capture.read()  # getting frame
@@ -240,6 +262,12 @@ async def face_recog_live(faceNet, maskNet, camera_address=0):
             break
 
         mask = None
+        if messages:
+            message_task = asyncio.create_task(mx.matrix_send_message(
+                client, speaker_room_id, '\n'.join(messages)))
+            await message_task
+            print(messages)
+            messages.clear()
 
         # if time since last welcome is less than TIME_START_AGAIN,
         # continue with the loop
@@ -256,18 +284,25 @@ async def face_recog_live(faceNet, maskNet, camera_address=0):
         # only making mask (and person) comprobation
         # every MASK_DETECT_INTERVAL seconds
         if has_time_passed(time_mask_detection, MASK_DETECT_INTERVAL):
-            mask = has_mask(frame, faceNet, maskNet)
+            has_mask_task = asyncio.create_task(
+                has_mask(frame, faceNet, maskNet))
+            mask = await has_mask_task
             time_mask_detection = time.time()
 
         if mask is None:  # if no face was detected, get another frame
             continue
 
         if has_time_passed(time_temp_comprobation, TEMP_COMPROBATION_INTERVAL):
-            fetch_temp_task = asyncio.create_task(
-                temp_okay(client, acceptable_temp_time))
-            temp_comprobation_flag, temp = await fetch_temp_task
-            print(temp_comprobation_flag)
+            temp_okay_task = asyncio.create_task(
+                temp_okay(client, acceptable_temp_time, temper_room_id))
+            temp_comprobation_flag, _ = await temp_okay_task
             time_temp_comprobation = time.time()
+            if temp_comprobation_flag is False:
+                messages.append('7TempIsGreaters')
+                print('Temperatura superior al rango designado')
+            elif temp_comprobation_flag is None:
+                print('Por favor, tome su temperatura en el sensor')
+                messages.append('8TakeTempSens')
 
         if mask:
             mask_detection_flag = True
@@ -278,39 +313,39 @@ async def face_recog_live(faceNet, maskNet, camera_address=0):
                 # No face recog flag means that's the only thing left for welcoming.
                 # Because there's a mask, the person is asked to remove it for the face_recognition to begin
                 print('Se ha detectado mascarilla. Remuevala momentaneamente.')
+                messages.append('1MaskWasDetected')
+
         # Only if there's no mask, a face hadn't been recognized
         # and time has passed since last face recognition there'll be a face recognition
         elif has_time_passed(time_face_recognition, FACE_RECOG_INTERVAL) and not face_recognition_flag:
-            rgb_frame = frame[:, :, ::-1]
-            face_locations = face_recognition.face_locations(rgb_frame)
-            unknown_face_encondings = face_recognition.face_encodings(
-                rgb_frame, face_locations)
-            if unknown_face_encondings:
-                unknown_face_enconding = unknown_face_encondings[0]
-                results = face_recognition.compare_faces(
-                    encodings, unknown_face_enconding)
-                face_distances = face_recognition.face_distance(
-                    encodings, unknown_face_enconding)
-                if len(face_distances) > 0:
-                    best_match_index = np.argmin(face_distances)
-                    if results[best_match_index]:
-                        p_id = person_ids[best_match_index]
+            face_recog_task = asyncio.create_task(face_recog(
+                frame, encodings))
+            face_recognition_flag, best_match_index = await face_recog_task
+            if face_recognition_flag:
+                p_id = person_ids[best_match_index]
 
-                        now = time.strftime(
-                            "%Y-%m-%d %H:%M:%S", time.localtime())
-                        person = crud.get_entry(classes.Person, p_id)
-                        print(
-                            f'Se reconoció a la persona {person}, en la fecha {now}')
+                now = time.strftime(
+                    "%Y-%m-%d %H:%M:%S", time.localtime())
+                person = crud.get_entry(classes.Person, p_id)
 
-                        face_recognition_flag = True
-                        time_since_face = time.time()
-                        # dm.insert_picture_discovered(person_id,
-                        # rgb_frame, unknown_face_enconding)
-                        if mask_detection_flag:
-                            print('Recuerde subir su mascarilla')
-                        else:
-                            print('No se ha detectado mascarilla. Póngasela')
+                print(
+                    f'Se reconoció a la persona {person}, en la fecha {now}')
+                messages.append('2PersonWasRecognized')
 
+                face_recognition_flag = True
+                time_since_face = time.time()
+                # dm.insert_picture_discovered(person_id,
+                # rgb_frame, unknown_face_enconding)
+                if mask_detection_flag:
+                    print('Recuerde subir su mascarilla')
+                    messages.append('3PutMaskOn')
+                else:
+                    print('No se ha detectado mascarilla. Póngasela')
+                    messages.append('4MaskWasNotDetected')
+
+            else:
+                print('Persona desconocida en la puerta')
+                messages.append('6UnknownPerson')
         # After a face has been recognized and a mask has been detected, the door will open if temperature is good
         # and all control variables will reset to original state
         if face_recognition_flag and mask_detection_flag:
@@ -326,68 +361,18 @@ async def face_recog_live(faceNet, maskNet, camera_address=0):
                 time_since_face = time.time()
                 time_welcomed = time.time()
                 print('Bienvenido')
+                messages.append('5Welcome')
                 # open door
-            elif temp_comprobation_flag is False:
-                print('Por favor, tome su temperatura en el sensor')
-            elif temp_comprobation_flag is None:
-                print('Por favor, tome su temperatura en el sensor')
-
+    # if message_task is not None:
+    #     await message_task
     video_capture.release()
     cv2.destroyAllWindows()
 
 
-async def matrix_login(server, user, password, device_id=None):
-    if device_id:
-        client = AsyncClient(server, user, device_id)
-    else:
-        client = AsyncClient(server, user)
-    await client.login(password)
-    return client
+async def temp_okay(client, acceptable_time, room_id):
+    temp_threshold = 38  # in degrees celcius
 
-
-async def matrix_get_room_id(client, room_name):
-    response = await client.room_resolve_alias(room_name)
-    room_id = response.room_id
-    return room_id
-
-
-async def _message_callback(room: MatrixRoom, event: RoomMessageText):
-    # response = f"Message received in room {room.display_name}\n" + \
-    #     f"{room.user_name(event.sender)} | {event.body}"
-    message = event.body
-    timestamp_miliseconds = int(event.server_timestamp)
-    timestamp_seconds = float(timestamp_miliseconds / 1000)
-    # date = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(1347517370))
-    # date = datetime.fromtimestamp(timestamp_seconds)
-    # print(datetime.fromtimestamp(timestamp_seconds))
-    data.append((message, timestamp_seconds))
-
-
-async def matrix_send_message(client, room_id, message):
-    await client.room_send(
-        room_id=room_id,
-        message_type="m.room.message",
-        content={
-            "body": message,
-            "msgtype": "m.text"
-        }
-    )
-
-
-async def matrix_get_messages(client):
-    client.add_event_callback(_message_callback, (RoomMessageText,))
-    return await client.sync(timeout=10000)
-
-
-async def matrix_logout_close(client):
-    await client.logout()
-    await client.close()
-
-
-async def temp_okay(client, acceptable_time):
-    temp_threshold = 36.2  # in degrees celcius
-    await matrix_get_messages(client)
-    print(data)
+    data = await mx.matrix_get_messages(client, room_id)
     good_value_flag = False
     answer = None
     temp = 0
@@ -395,7 +380,7 @@ async def temp_okay(client, acceptable_time):
     if data:
         last_entry = data[-1]
         try:
-            info, time = last_entry
+            info, time, _ = last_entry
             temp = float(info)
             good_value_flag = True
         except ValueError:
@@ -403,12 +388,7 @@ async def temp_okay(client, acceptable_time):
 
         if good_value_flag:
             if not has_time_passed(time, acceptable_time):
-                # print(temp, time)
-                if temp < temp_threshold:
-                    answer = True
-            else:
-                # print('No hay temperatura')
-                answer = False
+                answer = temp < temp_threshold
 
         data.clear()
 
