@@ -1,7 +1,7 @@
 import sqlalchemy
 import os
 from sqlalchemy.ext.declarative import declarative_base
-
+from sqlalchemy_serializer import SerializerMixin
 
 # setting up parameters
 _user = os.environ.get('MARIADB_USER')
@@ -29,7 +29,7 @@ def as_dict(self):
     return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
 
-class Person(Base):
+class Person(Base, SerializerMixin):
     __tablename__ = 'persons'
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
     identification_document = sqlalchemy.Column(
@@ -51,7 +51,7 @@ class Person(Base):
         return f'id: {self.id}, nombre: {self.first_name} {self.last_name}'
 
 
-class Employee(Base):
+class Employee(Base, SerializerMixin):
     __tablename__ = 'employees'
     id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey(
         'persons.id'), primary_key=True)
@@ -59,13 +59,12 @@ class Employee(Base):
     salary = sqlalchemy.Column(sqlalchemy.Float)
     email = sqlalchemy.Column(sqlalchemy.String(length=30))
     start_date = sqlalchemy.Column(sqlalchemy.Date)
-    vacations_since = sqlalchemy.Column(sqlalchemy.Date)
-
+    
     person = sqlalchemy.orm.relationship("Person", back_populates="employee")
     # Sintomas y lo demas referente a enfermedades y/o covid pendiente
 
 
-class Picture(Base):
+class Picture(Base, SerializerMixin):
     __tablename__ = 'pictures'
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
     person_id = sqlalchemy.Column(
@@ -77,7 +76,7 @@ class Picture(Base):
         "Time_Entry", back_populates="picture", uselist=False)
 
 
-class Vaccine(Base):
+class Vaccine(Base, SerializerMixin):
     __tablename__ = 'vaccines'
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
     person_id = sqlalchemy.Column(
@@ -88,7 +87,7 @@ class Vaccine(Base):
     person = sqlalchemy.orm.relationship("Person", back_populates="vaccines")
 
 
-class Time_Entry(Base):
+class Time_Entry(Base, SerializerMixin):
     __tablename__ = 'time_entries'
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
     person_id = sqlalchemy.Column(
@@ -107,10 +106,10 @@ class Time_Entry(Base):
 
 if __name__ == '__main__':
     # when runned as file, it'll to create all clases as tables on the database
-    Base.metadata.create_all(engine)
+    # Base.metadata.create_all(engine)
 
-    # import datetime
-    # import AccessControl.Data.crud as crud
+    import datetime
+    import AccessControl.Data.crud as crud
     # per = Person(identification_document='402-1383575-0',
     #              first_name='Gustavo', last_name='Lozada',
     #              birth_date=datetime.datetime(1999, 10, 9))
@@ -126,11 +125,22 @@ if __name__ == '__main__':
     #              birth_date=datetime.datetime(1999, 7, 22))
     # crud.add_entry(per)
 
-    # per = Person(identification_document='412-9768438-8',
-    #              first_name='Lia', last_name='Lozada',
-    #              birth_date=datetime.datetime(2009, 5, 10))
-    # crud.add_entry(per)
+    per = Person(identification_document='412-9999999-8',
+                 first_name='Waldry', last_name='Diaz',
+                 birth_date=datetime.datetime(1996, 5, 10), is_employee=True)
+    emp = Employee(position='Developer', salary=50000,
+                   email="wdiaz@devland.com",
+                   start_date=datetime.datetime(2019, 5, 18),
+                   person=per)
+    crud.add_entry(emp)
 
+    # position = sqlalchemy.Column(sqlalchemy.String(length=30))
+    # salary = sqlalchemy.Column(sqlalchemy.Float)
+    # email = sqlalchemy.Column(sqlalchemy.String(length=30))
+    # start_date = sqlalchemy.Column(sqlalchemy.Date)
+    # vacations_since = sqlalchemy.Column(sqlalchemy.Date)
+
+    # person = sqlalchemy.orm.
     # vac = Vaccine(person_id=1,dose_type='Pfizer2',
     # dose_date=datetime.datetime.now())
     # crud.add_entry(vac)

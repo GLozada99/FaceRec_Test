@@ -248,8 +248,8 @@ async def face_recog_live(faceNet, maskNet, camera_address=0):
     MASK_DETECT_INTERVAL = 5  # TIIS for calling mask detection function
     FACE_RECOG_INTERVAL = 8  # TIIS for calling face recognition function
     TEMP_COMPROBATION_INTERVAL = 10  # TIIS for calling temp comprobation function
-    TIME_START_AGAIN = 20  # TIIS for start again after opening a door
-    WINDOW_TIME_SINCE = 35  # TIIS a person has to remove it's mask
+    TIME_START_AGAIN = 13  # TIIS for start again after opening a door
+    WINDOW_TIME_SINCE = 30  # TIIS a person has to remove it's mask
     # after it has been detected for face recog
     # or time it has to put a mask on after it's face has been recognized
     messages = []
