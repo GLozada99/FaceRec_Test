@@ -15,6 +15,7 @@ def add_entry(entry):
     '''
     _session.add(entry)
     _session.commit()
+    return True
 
 
 def get_entry(Class, id: int):

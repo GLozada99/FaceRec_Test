@@ -20,15 +20,6 @@ Base = declarative_base()
 
 # creating clases
 
-
-def as_dict(self):
-    '''
-    Receives an object of a class
-    Returns a dict with all its fields as key/value pairs
-    '''
-    return {c.name: getattr(self, c.name) for c in self.__table__.columns}
-
-
 class Person(Base, SerializerMixin):
     __tablename__ = 'persons'
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
@@ -43,6 +34,7 @@ class Person(Base, SerializerMixin):
     employee = sqlalchemy.orm.relationship(
         "Employee", back_populates="person", uselist=False)
     pictures = sqlalchemy.orm.relationship("Picture", back_populates="person")
+    appointments = sqlalchemy.orm.relationship("Appointment", back_populates="person")
     vaccines = sqlalchemy.orm.relationship("Vaccine", back_populates="person")
     time_entries = sqlalchemy.orm.relationship(
         "Time_Entry", back_populates="person")
@@ -56,21 +48,27 @@ class Employee(Base, SerializerMixin):
     id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey(
         'persons.id'), primary_key=True)
     position = sqlalchemy.Column(sqlalchemy.String(length=30))
-    salary = sqlalchemy.Column(sqlalchemy.Float)
     email = sqlalchemy.Column(sqlalchemy.String(length=30))
     start_date = sqlalchemy.Column(sqlalchemy.Date)
-    
+    # salary = sqlalchemy.Column(sqlalchemy.Float)
+
     person = sqlalchemy.orm.relationship("Person", back_populates="employee")
+    appointments = sqlalchemy.orm.relationship("Appointment", back_populates="employee")
+
     # Sintomas y lo demas referente a enfermedades y/o covid pendiente
 
 
 class Picture(Base, SerializerMixin):
     __tablename__ = 'pictures'
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
-    person_id = sqlalchemy.Column(
-        sqlalchemy.Integer, sqlalchemy.ForeignKey('persons.id'))
     picture_bytes = sqlalchemy.Column(sqlalchemy.dialects.postgresql.BYTEA)
     face_bytes = sqlalchemy.Column(sqlalchemy.dialects.postgresql.BYTEA)
+
+    person_id = sqlalchemy.Column(
+        sqlalchemy.Integer, sqlalchemy.ForeignKey('persons.id'))
+    # time_entry_id = sqlalchemy.Column(
+    #     sqlalchemy.Integer, sqlalchemy.ForeignKey('time_entries.id'))
+
     person = sqlalchemy.orm.relationship("Person", back_populates="pictures")
     time_entry = sqlalchemy.orm.relationship(
         "Time_Entry", back_populates="picture", uselist=False)
@@ -81,7 +79,8 @@ class Vaccine(Base, SerializerMixin):
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
     person_id = sqlalchemy.Column(
         sqlalchemy.Integer, sqlalchemy.ForeignKey('persons.id'))
-    dose_type = sqlalchemy.Column(sqlalchemy.String(length=30))
+    dose_lab = sqlalchemy.Column(sqlalchemy.String(length=30))
+    lot_num = sqlalchemy.Column(sqlalchemy.String(length=20))
     dose_date = sqlalchemy.Column(sqlalchemy.Date)
 
     person = sqlalchemy.orm.relationship("Person", back_populates="vaccines")
@@ -92,8 +91,8 @@ class Time_Entry(Base, SerializerMixin):
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
     person_id = sqlalchemy.Column(
         sqlalchemy.Integer, sqlalchemy.ForeignKey('persons.id'))
-    picture_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey(
-        'pictures.id'))  # id de la foto cuando se registre la acción
+    picture_id = sqlalchemy.Column(
+        sqlalchemy.Integer, sqlalchemy.ForeignKey('pictures.id'))
     action = sqlalchemy.Column(sqlalchemy.String(length=7))  # entrada o salida
     # sea entrada o salida, tendra la hora de este
     action_time = sqlalchemy.Column(sqlalchemy.DateTime)
@@ -103,18 +102,37 @@ class Time_Entry(Base, SerializerMixin):
     picture = sqlalchemy.orm.relationship(
         "Picture", back_populates="time_entry")
 
+class Appointment(Base, SerializerMixin):
+    __tablename__ = 'appointments'
+    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
+    time_range = sqlalchemy.Column(sqlalchemy.DateTime)
+    accomplished = sqlalchemy.Column(sqlalchemy.Boolean, default=False)
+
+    person_id = sqlalchemy.Column(
+        sqlalchemy.Integer, sqlalchemy.ForeignKey('persons.id'))
+    employee_id = sqlalchemy.Column(
+        sqlalchemy.Integer, sqlalchemy.ForeignKey('employees.id'))
+
+    person = sqlalchemy.orm.relationship(
+        "Person", back_populates="appointments")
+    employee = sqlalchemy.orm.relationship(
+        "Employee", back_populates="appointments")
+
 
 if __name__ == '__main__':
     # when runned as file, it'll to create all clases as tables on the database
-    # Base.metadata.create_all(engine)
+    Base.metadata.create_all(engine)
 
-    import datetime
-    import AccessControl.Data.crud as crud
+    # import datetime
+    # import AccessControl.Data.crud as crud
     # per = Person(identification_document='402-1383575-0',
     #              first_name='Gustavo', last_name='Lozada',
     #              birth_date=datetime.datetime(1999, 10, 9))
     # crud.add_entry(per)
 
+    # vac = Vaccine(dose_lab='Pfizer2', lot_num='545',
+    #               dose_date=datetime.datetime.now(), person=per)
+    # crud.add_entry(vac)
     # per = Person(identification_document='412-6483594-8',
     #              first_name='Diogenes', last_name='Vargas',
     #              birth_date=datetime.datetime(1999, 3, 19))
@@ -125,14 +143,14 @@ if __name__ == '__main__':
     #              birth_date=datetime.datetime(1999, 7, 22))
     # crud.add_entry(per)
 
-    per = Person(identification_document='412-9999999-8',
-                 first_name='Waldry', last_name='Diaz',
-                 birth_date=datetime.datetime(1996, 5, 10), is_employee=True)
-    emp = Employee(position='Developer', salary=50000,
-                   email="wdiaz@devland.com",
-                   start_date=datetime.datetime(2019, 5, 18),
-                   person=per)
-    crud.add_entry(emp)
+    # per = Person(identification_document='412-9999999-8',
+    #              first_name='Waldry', last_name='Diaz',
+    #              birth_date=datetime.datetime(1996, 5, 10), is_employee=True)
+    # emp = Employee(position='Developer', salary=50000,
+    #                email="wdiaz@devland.com",
+    #                start_date=datetime.datetime(2019, 5, 18),
+    #                person=per)
+    # crud.add_entry(emp)
 
     # position = sqlalchemy.Column(sqlalchemy.String(length=30))
     # salary = sqlalchemy.Column(sqlalchemy.Float)
@@ -141,6 +159,3 @@ if __name__ == '__main__':
     # vacations_since = sqlalchemy.Column(sqlalchemy.Date)
 
     # person = sqlalchemy.orm.
-    # vac = Vaccine(person_id=1,dose_type='Pfizer2',
-    # dose_date=datetime.datetime.now())
-    # crud.add_entry(vac)

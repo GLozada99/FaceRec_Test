@@ -122,7 +122,7 @@ async def face_recog(frame, encodings):
     if unknown_face_encondings:
         unknown_face_enconding = unknown_face_encondings[0]
         results = face_recognition.compare_faces(
-            encodings, unknown_face_enconding)
+            encodings, unknown_face_enconding, 0.5)
         face_distances = face_recognition.face_distance(
             encodings, unknown_face_enconding)
         if len(face_distances) > 0:
