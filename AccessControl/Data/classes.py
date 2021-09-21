@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import sqlalchemy
 import os
 from sqlalchemy.ext.declarative import declarative_base
@@ -28,6 +29,7 @@ class Person(Base, SerializerMixin):
     first_name = sqlalchemy.Column(sqlalchemy.String(length=30))
     last_name = sqlalchemy.Column(sqlalchemy.String(length=30))
     birth_date = sqlalchemy.Column(sqlalchemy.Date)
+    email = sqlalchemy.Column(sqlalchemy.String(length=30))
     is_employee = sqlalchemy.Column(sqlalchemy.Boolean, default=False)
     active = sqlalchemy.Column(sqlalchemy.Boolean, default=True)
 
@@ -40,7 +42,7 @@ class Person(Base, SerializerMixin):
         "Time_Entry", back_populates="person")
 
     def __str__(self):
-        return f'id: {self.id}, nombre: {self.first_name} {self.last_name}'
+        return f'Person... id: {self.id}, name: {self.first_name} {self.last_name}'
 
 
 class Employee(Base, SerializerMixin):
@@ -48,14 +50,16 @@ class Employee(Base, SerializerMixin):
     id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey(
         'persons.id'), primary_key=True)
     position = sqlalchemy.Column(sqlalchemy.String(length=30))
-    email = sqlalchemy.Column(sqlalchemy.String(length=30))
     start_date = sqlalchemy.Column(sqlalchemy.Date)
     # salary = sqlalchemy.Column(sqlalchemy.Float)
 
     person = sqlalchemy.orm.relationship("Person", back_populates="employee")
     appointments = sqlalchemy.orm.relationship("Appointment", back_populates="employee")
+    comments = sqlalchemy.orm.relationship("Comment", back_populates="employee")
 
     # Sintomas y lo demas referente a enfermedades y/o covid pendiente
+    def __str__(self):
+        return f'Employee... id: {self.id}, name: {self.person.first_name} {self.person.last_name}'
 
 
 class Picture(Base, SerializerMixin):
@@ -72,6 +76,9 @@ class Picture(Base, SerializerMixin):
     person = sqlalchemy.orm.relationship("Person", back_populates="pictures")
     time_entry = sqlalchemy.orm.relationship(
         "Time_Entry", back_populates="picture", uselist=False)
+    
+    def __str__(self):
+        return f'Picture... id: {self.id}, person name: {self.person.first_name} {self.person.last_name}'
 
 
 class Vaccine(Base, SerializerMixin):
@@ -85,6 +92,9 @@ class Vaccine(Base, SerializerMixin):
 
     person = sqlalchemy.orm.relationship("Person", back_populates="vaccines")
 
+    def __str__(self):
+        return f'Vaccine... id: {self.id}, person name: {self.person.first_name} \
+            lab: {self.dose_lab} date:{self.dose_date}'
 
 class Time_Entry(Base, SerializerMixin):
     __tablename__ = 'time_entries'
@@ -102,10 +112,16 @@ class Time_Entry(Base, SerializerMixin):
     picture = sqlalchemy.orm.relationship(
         "Picture", back_populates="time_entry")
 
+    def __str__(self):
+        return f'Time Entry... id: {self.id}, person name: {self.person.first_name} \
+            action: {self.action} time:{self.action_time}'
+
 class Appointment(Base, SerializerMixin):
     __tablename__ = 'appointments'
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
-    time_range = sqlalchemy.Column(sqlalchemy.DateTime)
+    appointment_start = sqlalchemy.Column(sqlalchemy.DateTime)
+    appointment_end = sqlalchemy.Column(sqlalchemy.DateTime)
+    accepted = sqlalchemy.Column(sqlalchemy.Boolean, default=False)
     accomplished = sqlalchemy.Column(sqlalchemy.Boolean, default=False)
 
     person_id = sqlalchemy.Column(
@@ -117,6 +133,17 @@ class Appointment(Base, SerializerMixin):
         "Person", back_populates="appointments")
     employee = sqlalchemy.orm.relationship(
         "Employee", back_populates="appointments")
+
+class Comment(Base, SerializerMixin):
+    __tablename__ = 'comments'
+    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
+    timestamp = sqlalchemy.Column(sqlalchemy.DateTime, default=datetime.now())
+    text = sqlalchemy.Column(sqlalchemy.String(length=250))
+    employee_id = sqlalchemy.Column(
+        sqlalchemy.Integer, sqlalchemy.ForeignKey('employees.id'))
+
+    employee = sqlalchemy.orm.relationship(
+        "Employee", back_populates="comments")
 
 
 if __name__ == '__main__':

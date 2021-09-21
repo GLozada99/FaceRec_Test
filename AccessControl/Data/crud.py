@@ -85,3 +85,12 @@ def update_entry(Class, entry):
     current_entry = _session.query(Class).get(entry.id)
     current_entry.__dict__.update(entry.__dict__)
     _session.commit()
+
+def person_by_ident_doc(identification_document):
+    return _session.query(classes.Person).filter_by(identification_document=identification_document).all()
+
+def vaccines_by_person(person):
+    return _session.query(classes.Vaccine).filter_by(person_id=person.id).all()
+
+def comments_by_employee(employee):
+    return _session.query(classes.Vaccine).filter_by(employee_id=employee.id).all()
