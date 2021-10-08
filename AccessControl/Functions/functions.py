@@ -119,6 +119,7 @@ async def face_recog(frame, encodings):
         rgb_frame, face_locations)
     result = False
     best_match_index = 0
+    unknown_face_enconding = None
     if unknown_face_encondings:
         unknown_face_enconding = unknown_face_encondings[0]
         results = face_recognition.compare_faces(
@@ -129,7 +130,7 @@ async def face_recog(frame, encodings):
             best_match_index = np.argmin(face_distances)
             result = results[best_match_index]
 
-    return (result, best_match_index)
+    return (result, best_match_index, unknown_face_enconding, rgb_frame)
 
 
 def face_recog_file(picture_path, show_pictures=False):
@@ -320,7 +321,7 @@ async def face_recog_live(faceNet, maskNet, camera_address=0):
         elif has_time_passed(time_face_recognition, FACE_RECOG_INTERVAL) and not face_recognition_flag:
             face_recog_task = asyncio.create_task(face_recog(
                 frame, encodings))
-            face_recognition_flag, best_match_index = await face_recog_task
+            face_recognition_flag, best_match_index, unknown_face_encoding, rgb_frame = await face_recog_task
             if face_recognition_flag:
                 p_id = person_ids[best_match_index]
 
@@ -362,6 +363,7 @@ async def face_recog_live(faceNet, maskNet, camera_address=0):
                 time_welcomed = time.time()
                 print('Bienvenido')
                 messages.append('5Welcome')
+                dm.insert_picture_discovered(p_id, rgb_frame, unknown_face_encoding)
                 # open door
     # if message_task is not None:
     #     await message_task

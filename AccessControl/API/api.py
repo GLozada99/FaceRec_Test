@@ -7,13 +7,65 @@ import io
 from datetime import datetime, timedelta
 from flatten_json import flatten
 from flask import Flask, jsonify, request
+from flask_jwt_extended import create_access_token, JWTManager, jwt_required, get_jwt_identity
 from flask_cors import CORS
 from icecream import ic
 import requests
+from gevent.pywsgi import WSGIServer
+import argparse
+import os
+import redis
+
+ACCESS_EXPIRES = timedelta(hours=1)
+
+_secret = os.environ.get('SECRET')
+
 
 app = Flask(__name__)
+app.config["JWT_SECRET_KEY"] = _secret  # Change this!
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = ACCESS_EXPIRES
+jwt = JWTManager(app)
 CORS(app)
 
+def _generate_person_picture_vaccines(data):
+    # Person data
+    identification_doc = data['identification_doc']
+    first_name = data['first_name']
+    last_name = data['last_name']
+    birth_date = data['birth_date']
+    email = data['email']
+    person = classes.Person(identification_document=identification_doc,
+                            first_name=first_name, last_name=last_name,
+                            email=email, birth_date=birth_date)
+
+    # Picture data
+    base64_pic = data['base64_doc']
+    picture = None
+    try:
+        pic_bytes = base64.b64decode(base64_pic.split(",")[1])
+    except IndexError:
+        pic_bytes = base64.b64decode(base64_pic)
+    pic_io = io.BytesIO(pic_bytes)
+    picture_data_constructor = dm.process_picture_file(pic_io)
+    if picture_data_constructor:
+        raw_bin_pic, face_encoding = picture_data_constructor
+        picture = classes.Picture(picture_bytes=raw_bin_pic,
+                                  face_bytes=face_encoding, person=person)
+    else:
+        print('This picture does not contains a face')
+
+    # Vaccine data
+    vaccine_list = []
+    for i in range(1, 4):
+        dose_lab = data.get(f'dose_lab_{i}')
+        dose_date = data.get(f'dose_date_{i}')
+        lot_num = data.get(f'lot_num_{i}')
+        if dose_lab and dose_date and lot_num:
+            vaccine = classes.Vaccine(
+                dose_lab=dose_lab, dose_date=dose_date, lot_num=lot_num, person=person)
+            vaccine_list.append(vaccine)
+
+    return (person, picture, vaccine_list)
 
 @app.route('/list/persons', methods=['GET'])
 def list_persons():
@@ -36,6 +88,9 @@ def list_employees():
             only=('id', 'person.first_name', 'person.last_name',
                   'person.identification_document', 'person.birth_date',
                   'position', 'person.email', 'start_date'))))
+        # first_picture = crud.pictures_by_person(dat)[0]
+        # pic = dm.img_bytes_to_base64(first_picture.picture_bytes)
+        # json_data[-1]["picture"] = pic
     return jsonify(json_data)
 
 @app.route('/list/vaccines/', methods=['POST'])
@@ -66,37 +121,56 @@ def list_time_entries():
 
     return jsonify(json_data)
 
-@app.route('/list/person', methods=['POST'])
+@app.route('/info/person', methods=['POST'])
 def person_by_id():
     data = request.get_json(force=True)
     if data:
         id = data["id"]
         person = crud.get_entry(classes.Person, id)
+        print(person)
         json_data = []
         if person:
-            person = person[0]
-            json_data.append(flatten(person.to_dict(
-                only=('id', 'first_name', 'last_name', 'identification_document', 'birth_date', 'email'))))
+            first_picture = crud.pictures_by_person(person)[0]
+            pic = dm.img_bytes_to_base64(first_picture.picture_bytes)
+            json_data.append({"picture": pic})
+
             vaccines = crud.vaccines_by_person(person)
 
             for vaccine in vaccines:
                 json_data.append(flatten(vaccine.to_dict(only=("dose_lab", "dose_date", "lot_num"))))
 
+            pic_sp = 1
+            vac_sp = 2
+            json_data.insert(0, {"pic_sp": pic_sp, "vac_sp": vac_sp})
         return jsonify(json_data)
 
-@app.route('/list/employee', methods=['POST'])
+@app.route('/info/entry', methods=['POST'])
+def entry_by_id():
+    data = request.get_json(force=True)
+    if data:
+        id = data["id"]
+        entry = crud.get_entry(classes.Time_Entry, id)
+        json_data = []
+        if entry:
+            picture = entry.picture
+            pic = dm.img_bytes_to_base64(picture.picture_bytes)
+            json_data.append({"picture": pic})
+        return jsonify(json_data)
+
+
+@app.route('/info/employee', methods=['POST'])
 def employee_by_id():
     data = request.get_json(force=True)
+    print(data)
     if data:
         id = data["id"]
         employee = crud.get_entry(classes.Employee, id)
         json_data = []
         if employee:
-            employee = employee[0]
-            json_data.append(flatten(employee.to_dict(
-                only=('id', 'person.first_name', 'person.last_name',
-                      'person.identification_document', 'person.birth_date',
-                      'position', 'person.email', 'start_date',))))
+            first_picture = crud.pictures_by_person(employee.person)[0]
+            pic = dm.img_bytes_to_base64(first_picture.picture_bytes)
+            json_data.append({"picture": pic})
+
             vaccines = crud.vaccines_by_person(employee)
 
             for vaccine in vaccines:
@@ -107,7 +181,11 @@ def employee_by_id():
             for comments in comments:
                 json_data.append(flatten(comments.to_dict(only=("timestamp", "text"))))
 
-            json_data.insert(0, {"comment_start_possition": (len(vaccines) + 2)})
+            pic_sp = 1
+            vac_sp = 2
+            com_sp = vac_sp + len(vaccines)
+            json_data.insert(0, {"pic_sp": pic_sp, "com_sp": com_sp,
+                                 "vac_sp": vac_sp})
 
         return jsonify(json_data)
 
@@ -129,56 +207,18 @@ def get_time_entry():
 def regist_employees():
     data = request.get_json(force=True)
     if data:
-        # Person data
-        identification_doc = data['identification_doc']
-        first_name = data['first_name']
-        last_name = data['last_name']
-        birth_date = data['birth_date']
-        email = data['email']
-        person = classes.Person(identification_document=identification_doc,
-                                first_name=first_name, last_name=last_name,
-                                email=email, birth_date=birth_date, is_employee=True)
+        person, picture, vaccine_list = _generate_person_picture_vaccines(data)
+        person.is_employee = True
         # Employee data
         position = data['position']
         start_date = data['start_date']
-
         employee = classes.Employee(id=person.id, position=position,
                                     start_date=start_date, person=person)
+        employee.is_admin = bool(data['is_admin'])
 
-        # Picture data
-        base64_pics = data['pictures']
-        picture_list = []
-        for base64_pic in base64_pics:
-            try:
-                pic_bytes = base64.b64decode(base64_pic.split(",")[1])
-            except IndexError:
-                pic_bytes = base64.b64decode(base64_pic)
-            pic_io = io.BytesIO(pic_bytes)
-            picture_data_constructor = dm.process_picture_file(pic_io)
-            if picture_data_constructor:
-                raw_bin_pic, face_encoding = picture_data_constructor
-                picture = classes.Picture(picture_bytes=raw_bin_pic,
-                                          face_bytes=face_encoding,
-                                          person=person)
-                picture_list.append(picture)
-            else:
-                print('This picture does not contains a face')
-
-        # Vaccine data
-        vaccine_list = []
-        for i in range(1, 4):
-            dose_lab = data.get(f'dose_lab_{i}')
-            dose_date = data.get(f'dose_date_{i}')
-            lot_num = data.get(f'lot_num_{i}')
-            if dose_lab and dose_date and lot_num:
-                vaccine = classes.Vaccine(
-                    dose_lab=dose_lab, dose_date=dose_date, lot_num=lot_num, person=person)
-                vaccine_list.append(vaccine)
-
-        if picture_list:
+        if picture:
             crud.add_entry(employee)
-            for picture in picture_list:
-                crud.add_entry(picture)
+            crud.add_entry(picture)
             for vaccine in vaccine_list:
                 crud.add_entry(vaccine)
         else:
@@ -207,7 +247,6 @@ def regist_bulk():
                     else:
                         row_dict[k] = [v]
                 final_data.append(row_dict)
-            print(len(final_data))
             for data in final_data:
                 requests.post('http://localhost:5000/regist/employees', json=data)
 
@@ -218,42 +257,7 @@ def regist_bulk():
 def make_appointment():
     data = request.get_json(force=True)
     if data:
-        # Person data
-        identification_doc = data['identification_doc']
-        first_name = data['first_name']
-        last_name = data['last_name']
-        birth_date = data['birth_date']
-        email = data['email']
-        person = classes.Person(identification_document=identification_doc,
-                                first_name=first_name, last_name=last_name,
-                                email=email, birth_date=birth_date)
-        # Picture data
-        base64_pics = data['pictures']
-        picture_list = []
-        for base64_pic in base64_pics:
-            pic_bytes = base64.b64decode(base64_pic.split(",")[1])
-            pic_io = io.BytesIO(pic_bytes)
-            # Image.open(pic_io).show()
-            picture_data_constructor = dm.process_picture_file(pic_io)
-            if picture_data_constructor:
-                raw_bin_pic, face_encoding = picture_data_constructor
-                picture = classes.Picture(picture_bytes=raw_bin_pic,
-                                          face_bytes=face_encoding,
-                                          person=person)
-                picture_list.append(picture)
-            else:
-                print('This picture does not contains a face')
-
-        # Vaccine data
-        vaccine_list = []
-        for i in range(1, 4):
-            dose_lab = data.get(f'dose_lab_{i}')
-            dose_date = data.get(f'dose_date_{i}')
-            lot_num = data.get(f'lot_num_{i}')
-            if dose_lab and dose_date and lot_num:
-                vaccine = classes.Vaccine(
-                    dose_lab=dose_lab, dose_date=dose_date, lot_num=lot_num, person=person)
-                vaccine_list.append(vaccine)
+        person, picture, vaccine_list = _generate_person_picture_vaccines(data)
 
         employee_id = int(data['employee_id'])
         employee = crud.get_entry(classes.Employee, employee_id)
@@ -269,10 +273,10 @@ def make_appointment():
             appointment_end=appointment_start + timedelta(hours=1),
             person=person, employee=employee)
 
-        if picture_list:
+        if picture:
+            print(person)
             crud.add_entry(appointment)
-            for picture in picture_list:
-                crud.add_entry(picture)
+            crud.add_entry(picture)
             for vaccine in vaccine_list:
                 crud.add_entry(vaccine)
         else:
@@ -280,17 +284,49 @@ def make_appointment():
 
     return jsonify(success=True)
 
+@app.route('/password', methods=['POST'])
+def set_password():
+    data = request.get_json(force=True)
+    state = False
+    if data:
+        id = data['id']
+        password = data['password']
+        employee = crud.get_entry(classes.Employee, id)
+        if employee:
+            if not employee.password:
+                hashed_password = dm.compute_hash(password)
+                employee.password = hashed_password
+                crud.update_entry(classes.Employee, employee)
+                state = True
+    return jsonify(success=state)
 
-@app.route('/foo', methods=['GET'])
-def foo():
+@app.route("/login", methods=["POST"])
+def login():
     data = request.get_json(force=True)
     if data:
-        print(data["foo1"])
-        print(data.get("foo2"))
-        print(data["foo3"])
+        id = data['userId']
+        password = data['password']
+        employee = crud.get_entry(classes.Employee, id)
+        if employee:
+            if employee.password:
+                if dm.compare_hash(password, employee.password):
+                    access_token = create_access_token(identity=id)
+                    return jsonify(access_token=access_token)
+   
+    return jsonify({"msg": "Bad username or password"}), 401
 
-    return jsonify(data)
-
+@app.route("/user", methods=["GET"])
+@jwt_required()
+def protected():
+    # Access the identity of the current user with get_jwt_identity
+    username = ''
+    is_admin = False
+    current_user_id = get_jwt_identity()
+    user = crud.get_entry(classes.Employee, current_user_id)
+    if user:
+        username = f'{user.person.first_name} {user.person.last_name}'
+        is_admin = user.is_admin
+    return jsonify(username=username, is_admin=is_admin), 200
 
 @app.route('/vaccine/regist', methods=['POST', 'GET'])
 def vaccine():
@@ -304,6 +340,18 @@ def vaccine():
 
     crud.add_entry(vacc)
 
+def serve():
+    # app.debug = True
+    # app.auto_reload = True
+    http_server = WSGIServer(('', 5000), app)
+    http_server.serve_forever()
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True)
+    # serve()
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--debug', action='store_true')
+    args = vars(ap.parse_args())
+    if args['debug']:
+        app.run(host='0.0.0.0', debug=True)
+    else:
+        serve()

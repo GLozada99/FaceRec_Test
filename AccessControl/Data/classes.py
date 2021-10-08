@@ -9,7 +9,7 @@ _user = os.environ.get('MARIADB_USER')
 _password = os.environ.get('MARIADB_PASSWORD')
 _host = '127.0.0.1'
 _port = '5432'  # database port
-_database = 'face_recognition'
+_database = 'SAWR'
 
 
 # getting engine
@@ -49,9 +49,10 @@ class Employee(Base, SerializerMixin):
     __tablename__ = 'employees'
     id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey(
         'persons.id'), primary_key=True)
+    password = sqlalchemy.Column(sqlalchemy.String(length=64))
     position = sqlalchemy.Column(sqlalchemy.String(length=30))
     start_date = sqlalchemy.Column(sqlalchemy.Date)
-    # salary = sqlalchemy.Column(sqlalchemy.Float)
+    is_admin = sqlalchemy.Column(sqlalchemy.Boolean)
 
     person = sqlalchemy.orm.relationship("Person", back_populates="employee")
     appointments = sqlalchemy.orm.relationship("Appointment", back_populates="employee")
@@ -76,7 +77,7 @@ class Picture(Base, SerializerMixin):
     person = sqlalchemy.orm.relationship("Person", back_populates="pictures")
     time_entry = sqlalchemy.orm.relationship(
         "Time_Entry", back_populates="picture", uselist=False)
-    
+
     def __str__(self):
         return f'Picture... id: {self.id}, person name: {self.person.first_name} {self.person.last_name}'
 
@@ -149,40 +150,3 @@ class Comment(Base, SerializerMixin):
 if __name__ == '__main__':
     # when runned as file, it'll to create all clases as tables on the database
     Base.metadata.create_all(engine)
-
-    # import datetime
-    # import AccessControl.Data.crud as crud
-    # per = Person(identification_document='402-1383575-0',
-    #              first_name='Gustavo', last_name='Lozada',
-    #              birth_date=datetime.datetime(1999, 10, 9))
-    # crud.add_entry(per)
-
-    # vac = Vaccine(dose_lab='Pfizer2', lot_num='545',
-    #               dose_date=datetime.datetime.now(), person=per)
-    # crud.add_entry(vac)
-    # per = Person(identification_document='412-6483594-8',
-    #              first_name='Diogenes', last_name='Vargas',
-    #              birth_date=datetime.datetime(1999, 3, 19))
-    # crud.add_entry(per)
-
-    # per = Person(identification_document='412-4597816-8',
-    #              first_name='David', last_name='Vazquez',
-    #              birth_date=datetime.datetime(1999, 7, 22))
-    # crud.add_entry(per)
-
-    # per = Person(identification_document='412-9999999-8',
-    #              first_name='Waldry', last_name='Diaz',
-    #              birth_date=datetime.datetime(1996, 5, 10), is_employee=True)
-    # emp = Employee(position='Developer', salary=50000,
-    #                email="wdiaz@devland.com",
-    #                start_date=datetime.datetime(2019, 5, 18),
-    #                person=per)
-    # crud.add_entry(emp)
-
-    # position = sqlalchemy.Column(sqlalchemy.String(length=30))
-    # salary = sqlalchemy.Column(sqlalchemy.Float)
-    # email = sqlalchemy.Column(sqlalchemy.String(length=30))
-    # start_date = sqlalchemy.Column(sqlalchemy.Date)
-    # vacations_since = sqlalchemy.Column(sqlalchemy.Date)
-
-    # person = sqlalchemy.orm.

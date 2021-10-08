@@ -82,7 +82,7 @@ def reactivate_entry(Class, id: int):
 
 def update_entry(Class, entry):
     # not very sure about this one...
-    current_entry = _session.query(Class).get(entry.id)
+    current_entry = get_entry(Class, entry.id)
     current_entry.__dict__.update(entry.__dict__)
     _session.commit()
 
@@ -93,4 +93,7 @@ def vaccines_by_person(person):
     return _session.query(classes.Vaccine).filter_by(person_id=person.id).all()
 
 def comments_by_employee(employee):
-    return _session.query(classes.Vaccine).filter_by(employee_id=employee.id).all()
+    return _session.query(classes.Comment).filter_by(employee_id=employee.id).all()
+
+def pictures_by_person(person):
+    return _session.query(classes.Picture).filter_by(person_id=person.id).all()
