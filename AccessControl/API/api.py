@@ -1,30 +1,28 @@
 import AccessControl.Data.data_manipulation as dm
 import AccessControl.Data.classes as classes
 import AccessControl.Data.crud as crud
+import requests
+import argparse
 import base64
-from PIL import Image
+import os
 import io
-from datetime import datetime, timedelta
-from flatten_json import flatten
-from flask import Flask, jsonify, request
 from flask_jwt_extended import create_access_token, JWTManager, jwt_required, get_jwt_identity
+from flask import Flask, jsonify, request
+from datetime import datetime, timedelta
+from gevent.pywsgi import WSGIServer
+from flatten_json import flatten
 from flask_cors import CORS
 from icecream import ic
-import requests
-from gevent.pywsgi import WSGIServer
-import argparse
-import os
-import redis
+
+# return jsonify(msg="There is no person with this identification document")
 
 ACCESS_EXPIRES = timedelta(hours=1)
-
 _secret = os.environ.get('SECRET')
 
-
 app = Flask(__name__)
-app.config["JWT_SECRET_KEY"] = _secret  # Change this!
-app.config["JWT_ACCESS_TOKEN_EXPIRES"] = ACCESS_EXPIRES
 jwt = JWTManager(app)
+app.config["JWT_SECRET_KEY"] = _secret
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = ACCESS_EXPIRES
 CORS(app)
 
 def _generate_person_picture_vaccines(data):
@@ -68,18 +66,22 @@ def _generate_person_picture_vaccines(data):
     return (person, picture, vaccine_list)
 
 @app.route('/list/persons', methods=['GET'])
+@jwt_required()
 def list_persons():
+    '''Returns all persons who are not employees'''
     all_persons = crud.get_entries(classes.Person)
     only_persons = [person for person in all_persons if not person.is_employee]
     json_data = []
     for dat in only_persons:
         json_data.append(dat.to_dict(
-            only=('id', 'first_name', 'last_name', 'identification_document', 'birth_date', 'email')))
+            only=('id', 'first_name', 'last_name', 
+                  'identification_document', 'birth_date', 'email')))
 
     return jsonify(json_data)
 
 @app.route('/list/employees', methods=['GET'])
 def list_employees():
+    '''Returns all employees'''
     data = crud.get_entries(classes.Employee)
     json_data = []
 
@@ -88,13 +90,11 @@ def list_employees():
             only=('id', 'person.first_name', 'person.last_name',
                   'person.identification_document', 'person.birth_date',
                   'position', 'person.email', 'start_date'))))
-        # first_picture = crud.pictures_by_person(dat)[0]
-        # pic = dm.img_bytes_to_base64(first_picture.picture_bytes)
-        # json_data[-1]["picture"] = pic
     return jsonify(json_data)
 
 @app.route('/list/vaccines/', methods=['POST'])
 def person_by_ident_doc():
+    '''Returns list of all the vaccines of a specific person given the identification_document number'''
     data = request.get_json(force=True)
     if data:
         identification_document = data["identification_doc"]
@@ -105,13 +105,14 @@ def person_by_ident_doc():
             json_data.append(flatten(person.to_dict(
                 only=('id', 'first_name', 'last_name', 'identification_document', 'birth_date',))))
             vaccines = crud.vaccines_by_person(person)
-
             for vaccine in vaccines:
                 json_data.append(flatten(vaccine.to_dict(only=("dose_lab", "dose_date", "lot_num"))))
         return jsonify(json_data)
 
 @app.route('/list/entries', methods=['GET'])
+@jwt_required()
 def list_time_entries():
+    '''Returns a list of all the entries'''
     data = crud.get_entries(classes.Time_Entry)
     json_data = []
     for dat in data:
@@ -122,7 +123,9 @@ def list_time_entries():
     return jsonify(json_data)
 
 @app.route('/info/person', methods=['POST'])
+@jwt_required()
 def person_by_id():
+    '''Returns the picture and vaccine list of a specific person given it's ID'''
     data = request.get_json(force=True)
     if data:
         id = data["id"]
@@ -145,7 +148,9 @@ def person_by_id():
         return jsonify(json_data)
 
 @app.route('/info/entry', methods=['POST'])
+@jwt_required()
 def entry_by_id():
+    '''Returns the picture of a specific entry given it's ID'''
     data = request.get_json(force=True)
     if data:
         id = data["id"]
@@ -157,9 +162,10 @@ def entry_by_id():
             json_data.append({"picture": pic})
         return jsonify(json_data)
 
-
 @app.route('/info/employee', methods=['POST'])
+@jwt_required()
 def employee_by_id():
+    '''Returns the picture, vaccine list and comment list of a specific employe given it's ID'''
     data = request.get_json(force=True)
     print(data)
     if data:
@@ -189,22 +195,10 @@ def employee_by_id():
 
         return jsonify(json_data)
 
-@app.route('/list/entries', methods=['GET'])
-def get_time_entry():
-    data = request.get_json(force=True)
-    if data:
-        id = data["id"]
-        data = crud.get_entry(classes.Time_Entry, id=id)
-        json_data = None
-        if data:
-            json_data = flatten(data.to_dict(
-                only=('id', 'action', 'action_time', 'person.id', 'person.first_name',
-                      'person.last_name', 'person.position', 'picture.picture_bytes')))
-
-        return jsonify(json_data)
-
-@app.route('/regist/employees', methods=['POST'])
+@app.route('/regist/employee', methods=['POST'])
+@jwt_required()
 def regist_employees():
+    '''Receives employee data and inserts it to the database'''
     data = request.get_json(force=True)
     if data:
         person, picture, vaccine_list = _generate_person_picture_vaccines(data)
@@ -221,13 +215,15 @@ def regist_employees():
             crud.add_entry(picture)
             for vaccine in vaccine_list:
                 crud.add_entry(vaccine)
-        else:
-            return jsonify(success=False)
+            return jsonify(success=True), 201
 
-    return jsonify(success=True)
+    return jsonify(msg="No correct picture"), 401
 
 @app.route('/regist/bulk', methods=['POST'])
+@jwt_required()
 def regist_bulk():
+    '''Receives a CSV file (on base encoding) containing
+    multiple employees and inserts them into the database'''
     json_data = request.get_json(force=True)
     if json_data:
         b64_string = json_data.get('base64_doc')
@@ -249,12 +245,17 @@ def regist_bulk():
                 final_data.append(row_dict)
             for data in final_data:
                 requests.post('http://localhost:5000/regist/employees', json=data)
+            else:
+                return jsonify(success=True), 201
 
-            # print(final_data)
-    return jsonify(success=True)
+        return jsonify(msg="Errors in the file"), 401
 
 @app.route('/appointment', methods=['POST'])
 def make_appointment():
+    '''
+    Recieves data regarding an appointment and creates one,
+    also creating the person making the appointment and the picture of the person
+    '''
     data = request.get_json(force=True)
     if data:
         person, picture, vaccine_list = _generate_person_picture_vaccines(data)
@@ -274,31 +275,55 @@ def make_appointment():
             person=person, employee=employee)
 
         if picture:
-            print(person)
             crud.add_entry(appointment)
             crud.add_entry(picture)
             for vaccine in vaccine_list:
                 crud.add_entry(vaccine)
-        else:
-            return jsonify(success=False)
+            return jsonify(success=True), 201
 
-    return jsonify(success=True)
+    return jsonify(msg="No correct picture"), 401
 
-@app.route('/password', methods=['POST'])
-def set_password():
+@app.route('/password/first', methods=['POST'])
+def set_first_password():
+    '''
+    Sets a first password for an account given the id
+    '''
     data = request.get_json(force=True)
-    state = False
     if data:
         id = data['id']
         password = data['password']
         employee = crud.get_entry(classes.Employee, id)
+        msg = ''
         if employee:
             if not employee.password:
                 hashed_password = dm.compute_hash(password)
                 employee.password = hashed_password
                 crud.update_entry(classes.Employee, employee)
-                state = True
-    return jsonify(success=state)
+                return jsonify(success=True), 201
+            msg = 'The account already has a password'
+        msg = 'No employee with this ID'
+
+        return jsonify(msg=msg)
+
+@app.route('/password/new', methods=['POST'])
+def set_password():
+    '''
+    Sets a new password for an account given the id
+    '''
+    data = request.get_json(force=True)
+    if data:
+        id = data['id']
+        password = data['password']
+        employee = crud.get_entry(classes.Employee, id)
+        msg = ''
+        if employee:
+            hashed_password = dm.compute_hash(password)
+            employee.password = hashed_password
+            crud.update_entry(classes.Employee, employee)
+            return jsonify(success=True), 201
+        msg = 'No employee with this ID'
+
+        return jsonify(msg=msg), 401
 
 @app.route("/login", methods=["POST"])
 def login():
@@ -312,8 +337,8 @@ def login():
                 if dm.compare_hash(password, employee.password):
                     access_token = create_access_token(identity=id)
                     return jsonify(access_token=access_token)
-   
-    return jsonify({"msg": "Bad username or password"}), 401
+
+    return jsonify(msg='Bad username or password'), 401
 
 @app.route("/user", methods=["GET"])
 @jwt_required()
@@ -326,7 +351,8 @@ def protected():
     if user:
         username = f'{user.person.first_name} {user.person.last_name}'
         is_admin = user.is_admin
-    return jsonify(username=username, is_admin=is_admin), 200
+        
+    return jsonify(username=username, is_admin=is_admin, id=current_user_id), 200
 
 @app.route('/vaccine/regist', methods=['POST', 'GET'])
 def vaccine():
