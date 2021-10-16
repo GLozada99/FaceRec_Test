@@ -228,12 +228,14 @@ def regist_bulk():
     if json_data:
         b64_string = json_data.get('base64_doc')
         if b64_string:
-            b64_doc = base64.b64decode(b64_string.split(",")[1])
+            try:
+                b64_doc = base64.b64decode(b64_string.split(",")[1])
+            except IndexError:
+                b64_doc = base64.b64decode(b64_string)
             csv_data = b64_doc.decode('utf-8').splitlines()
 
             header = csv_data[0].split(',')
             rows = [entry.split(',') for entry in csv_data[1:]]
-
             final_data = []
             for row in rows:
                 row_dict = {}
@@ -244,10 +246,10 @@ def regist_bulk():
                         row_dict[k] = [v]
                 final_data.append(row_dict)
             for data in final_data:
-                requests.post('http://localhost:5000/regist/employees', json=data)
+                requests.post('http://localhost:5000/regist/employee', json=data)
             else:
                 return jsonify(success=True), 201
-
+        
         return jsonify(msg="Errors in the file"), 401
 
 @app.route('/appointment', methods=['POST'])
