@@ -9,12 +9,9 @@ import io
 from flask_jwt_extended import create_access_token, JWTManager, jwt_required, get_jwt_identity
 from flask import Flask, jsonify, request
 from datetime import datetime, timedelta
-from gevent.pywsgi import WSGIServer
 from flatten_json import flatten
 from flask_cors import CORS
 from icecream import ic
-
-# return jsonify(msg="There is no person with this identification document")
 
 ACCESS_EXPIRES = timedelta(hours=1)
 _secret = os.environ.get('SECRET')
@@ -74,7 +71,7 @@ def list_persons():
     json_data = []
     for dat in only_persons:
         json_data.append(dat.to_dict(
-            only=('id', 'first_name', 'last_name', 
+            only=('id', 'first_name', 'last_name',
                   'identification_document', 'birth_date', 'email')))
 
     return jsonify(json_data)
@@ -249,7 +246,7 @@ def regist_bulk():
                 requests.post('http://localhost:5000/regist/employee', json=data)
             else:
                 return jsonify(success=True), 201
-        
+
         return jsonify(msg="Errors in the file"), 401
 
 @app.route('/appointment', methods=['POST'])
@@ -353,7 +350,7 @@ def protected():
     if user:
         username = f'{user.person.first_name} {user.person.last_name}'
         is_admin = user.is_admin
-        
+
     return jsonify(username=username, is_admin=is_admin, id=current_user_id), 200
 
 @app.route('/vaccine/regist', methods=['POST', 'GET'])
@@ -367,19 +364,3 @@ def vaccine():
         vacc = classes.Vaccine(person_id, dose_type, dose_date)
 
     crud.add_entry(vacc)
-
-def serve():
-    # app.debug = True
-    # app.auto_reload = True
-    http_server = WSGIServer(('', 5000), app)
-    http_server.serve_forever()
-
-if __name__ == '__main__':
-    # serve()
-    ap = argparse.ArgumentParser()
-    ap.add_argument('--debug', action='store_true')
-    args = vars(ap.parse_args())
-    if args['debug']:
-        app.run(host='0.0.0.0', debug=True)
-    else:
-        serve()
