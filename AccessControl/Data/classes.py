@@ -34,7 +34,7 @@ class Person(Base, SerializerMixin):
     active = sqlalchemy.Column(sqlalchemy.Boolean, default=True)
 
     employee = sqlalchemy.orm.relationship(
-        "Employee", back_populates="person", uselist=False)
+        "Employee", back_populates="person")
     pictures = sqlalchemy.orm.relationship("Picture", back_populates="person")
     appointments = sqlalchemy.orm.relationship("Appointment", back_populates="person")
     vaccines = sqlalchemy.orm.relationship("Vaccine", back_populates="person")
@@ -149,4 +149,8 @@ class Comment(Base, SerializerMixin):
 
 if __name__ == '__main__':
     # when runned as file, it'll to create all clases as tables on the database
+    Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
+
+    from AccessControl.Data.admin_init import admin_init
+    admin_init()
