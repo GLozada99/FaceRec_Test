@@ -1,17 +1,23 @@
-import AccessControl.Data.data_manipulation as dm
-import AccessControl.Data.classes as classes
-import AccessControl.Data.crud as crud
-import requests
 import argparse
 import base64
-import os
+import csv
 import io
-from flask_jwt_extended import create_access_token, JWTManager, jwt_required, get_jwt_identity
-from flask import Flask, jsonify, request
+import os
 from datetime import datetime, timedelta
-from flatten_json import flatten
+
+import requests
+from flask import Flask, jsonify, request
 from flask_cors import CORS
+from flask_jwt_extended import (JWTManager, create_access_token,
+                                get_jwt_identity, jwt_required)
+from flatten_json import flatten
 from icecream import ic
+from psycopg2.errorcodes import INVALID_TEXT_REPRESENTATION
+
+import AccessControl.Data.classes as classes
+import AccessControl.Data.crud as crud
+import AccessControl.Data.data_manipulation as dm
+import AccessControl.Functions.matrix_functions as mx
 
 ACCESS_EXPIRES = timedelta(hours=1)
 _secret = os.environ.get('SECRET')
@@ -32,7 +38,6 @@ def _generate_person_picture_vaccines(data):
     person = classes.Person(identification_document=identification_doc,
                             first_name=first_name, last_name=last_name,
                             email=email, birth_date=birth_date)
-
     # Picture data
     base64_pic = data['base64_doc']
     picture = None
@@ -46,8 +51,6 @@ def _generate_person_picture_vaccines(data):
         raw_bin_pic, face_encoding = picture_data_constructor
         picture = classes.Picture(picture_bytes=raw_bin_pic,
                                   face_bytes=face_encoding, person=person)
-    else:
-        print('This picture does not contains a face')
 
     # Vaccine data
     vaccine_list = []
@@ -62,7 +65,7 @@ def _generate_person_picture_vaccines(data):
 
     return (person, picture, vaccine_list)
 
-@app.route('/list/persons', methods=['GET'])
+@app.route('/persons', methods=['GET'])
 @jwt_required()
 def list_persons():
     '''Returns all persons who are not employees'''
@@ -197,6 +200,7 @@ def employee_by_id():
 def regist_employees():
     '''Receives employee data and inserts it to the database'''
     data = request.get_json(force=True)
+    msg = 'No correct data'
     if data:
         person, picture, vaccine_list = _generate_person_picture_vaccines(data)
         person.is_employee = True
@@ -213,8 +217,10 @@ def regist_employees():
             for vaccine in vaccine_list:
                 crud.add_entry(vaccine)
             return jsonify(success=True), 201
+        else:
+            msg = 'No correct picture'
 
-    return jsonify(msg="No correct picture"), 401
+    return jsonify(msg=msg), 401
 
 @app.route('/regist/bulk', methods=['POST'])
 @jwt_required()
@@ -229,21 +235,10 @@ def regist_bulk():
                 b64_doc = base64.b64decode(b64_string.split(",")[1])
             except IndexError:
                 b64_doc = base64.b64decode(b64_string)
-            csv_data = b64_doc.decode('utf-8').splitlines()
 
-            header = csv_data[0].split(',')
-            rows = [entry.split(',') for entry in csv_data[1:]]
-            final_data = []
-            for row in rows:
-                row_dict = {}
-                for k, v in zip(header, row):
-                    if k != 'pictures':
-                        row_dict[k] = v
-                    else:
-                        row_dict[k] = [v]
-                final_data.append(row_dict)
-            for data in final_data:
-                requests.post('http://localhost:5000/regist/employee', json=data)
+            reader = csv.DictReader(io.StringIO(b64_doc.decode('utf-8')))
+            for row in reader:
+                requests.post('http://localhost:5000/regist/employee', json=row)
             else:
                 return jsonify(success=True), 201
 
@@ -256,6 +251,7 @@ def make_appointment():
     also creating the person making the appointment and the picture of the person
     '''
     data = request.get_json(force=True)
+    msg = 'No correct data'
     if data:
         person, picture, vaccine_list = _generate_person_picture_vaccines(data)
 
@@ -279,10 +275,12 @@ def make_appointment():
             for vaccine in vaccine_list:
                 crud.add_entry(vaccine)
             return jsonify(success=True), 201
+        else:
+            msg = 'No correct picture'
 
-    return jsonify(msg="No correct picture"), 401
+    return jsonify(msg=msg), 401
 
-@app.route('/password/first', methods=['POST'])
+@app.route('/setPassword', methods=['POST'])
 def set_first_password():
     '''
     Sets a first password for an account given the id
@@ -291,18 +289,24 @@ def set_first_password():
     if data:
         id = data['id']
         password = data['password']
+        confirm_password = data['confirm_password']
         employee = crud.get_entry(classes.Employee, id)
         msg = ''
         if employee:
             if not employee.password:
-                hashed_password = dm.compute_hash(password)
-                employee.password = hashed_password
-                crud.update_entry(classes.Employee, employee)
-                return jsonify(success=True), 201
-            msg = 'The account already has a password'
-        msg = 'No employee with this ID'
+                if password.strip() == confirm_password.strip():
+                    hashed_password = dm.compute_hash(password)
+                    employee.password = hashed_password
+                    crud.update_entry(classes.Employee, employee)
+                    return jsonify(msg='Password set successfully'), 201
+                else:
+                    msg = 'Passwords must be the same'
+            else:
+                msg = 'The account already has a password'
+        else:
+            msg = 'No employee with this ID'
 
-        return jsonify(msg=msg)
+        return jsonify(msg=msg), 401
 
 @app.route('/password/new', methods=['POST'])
 def set_password():
@@ -328,16 +332,47 @@ def set_password():
 def login():
     data = request.get_json(force=True)
     if data:
-        id = data['userId']
+        id = data['id']
         password = data['password']
-        employee = crud.get_entry(classes.Employee, id)
+
+        try:
+            id = int(id)
+            employee = crud.get_entry(classes.Employee, id)
+        except ValueError:
+            employee = None
         if employee:
             if employee.password:
                 if dm.compare_hash(password, employee.password):
                     access_token = create_access_token(identity=id)
                     return jsonify(access_token=access_token)
+            else:
+                return jsonify(msg='Must create password'), 401
 
     return jsonify(msg='Bad username or password'), 401
+
+@app.route("/openDoor", methods=['GET'])
+@jwt_required()
+async def openDoor():
+    try:
+        message = '1'
+        server = 'https://matrix-client.matrix.org'
+        user = '@tavo9:matrix.org'
+        password = 'O1KhpTBn7D47'
+        device_id = 'LYTVJFQRJG'
+        door_room_name = '#doorLock:matrix.org'
+
+        client = await mx.matrix_login(server, user, password, device_id)
+        door_room_id = await mx.matrix_get_room_id(client, door_room_name)
+
+        await mx.matrix_send_message(client, door_room_id, message)
+        msg = 'Door oppened correctly'
+        code = 201
+        await mx.matrix_logout_close(client)
+    except Exception:
+        msg = 'Error opening door'
+        code = 401
+
+    return jsonify(msg=msg), code
 
 @app.route("/user", methods=["GET"])
 @jwt_required()
@@ -351,7 +386,7 @@ def protected():
         username = f'{user.person.first_name} {user.person.last_name}'
         is_admin = user.is_admin
 
-    return jsonify(username=username, is_admin=is_admin, id=current_user_id), 200
+    return jsonify(username=username, is_admin=is_admin, id=current_user_id), 201
 
 @app.route('/vaccine/regist', methods=['POST', 'GET'])
 def vaccine():
@@ -364,3 +399,6 @@ def vaccine():
         vacc = classes.Vaccine(person_id, dose_type, dose_date)
 
     crud.add_entry(vacc)
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', debug=True)
