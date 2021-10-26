@@ -67,7 +67,7 @@ def _generate_person_picture_vaccines(data):
 
 @app.route('/persons', methods=['GET'])
 @jwt_required()
-def list_persons():
+def list_persons():  # Done
     '''Returns all persons who are not employees'''
     all_persons = crud.get_entries(classes.Person)
     only_persons = [person for person in all_persons if not person.is_employee]
@@ -76,8 +76,8 @@ def list_persons():
         json_data.append(dat.to_dict(
             only=('id', 'first_name', 'last_name',
                   'identification_document', 'birth_date', 'email')))
-
-    return jsonify(json_data)
+    msg = '' if len(json_data) else 'No entries'
+    return jsonify(result=json_data, msg=msg), 201
 
 @app.route('/list/employees', methods=['GET'])
 def list_employees():
@@ -109,7 +109,7 @@ def person_by_ident_doc():
                 json_data.append(flatten(vaccine.to_dict(only=("dose_lab", "dose_date", "lot_num"))))
         return jsonify(json_data)
 
-@app.route('/list/entries', methods=['GET'])
+@app.route('/entries', methods=['GET'])  # Done
 @jwt_required()
 def list_time_entries():
     '''Returns a list of all the entries'''
@@ -119,48 +119,48 @@ def list_time_entries():
         json_data.append(flatten(dat.to_dict(
             only=('id', 'action', 'action_time', 'person.id', 'person.first_name', 'person.last_name',
                   ))))
+    msg = '' if len(json_data) else 'No entries'
+    return jsonify(result=json_data, msg=msg), 201
 
-    return jsonify(json_data)
-
-@app.route('/info/person', methods=['POST'])
+@app.route('/person/<id>', methods=['GET'])
 @jwt_required()
-def person_by_id():
+def person_by_id(id):
     '''Returns the picture and vaccine list of a specific person given it's ID'''
     data = request.get_json(force=True)
-    if data:
-        id = data["id"]
-        person = crud.get_entry(classes.Person, id)
-        print(person)
-        json_data = []
-        if person:
-            first_picture = crud.pictures_by_person(person)[0]
-            pic = dm.img_bytes_to_base64(first_picture.picture_bytes)
-            json_data.append({"picture": pic})
+    person = crud.get_entry(classes.Person, int(id))
+    json_data = {}
+    if person:
+        first_picture = crud.pictures_by_person(person)[0]
+        pic = dm.img_bytes_to_base64(first_picture.picture_bytes)
+        json_data["picture"] = pic
 
-            vaccines = crud.vaccines_by_person(person)
+        vaccines = crud.vaccines_by_person(person)
+        json_data["vaccines"] = [flatten(vaccine.to_dict(only=("dose_lab", "dose_date", "lot_num")))
+                                 for vaccine in vaccines]
+        msg = ''
+        status = 201
+    else:
+        msg = 'No entry with this ID'
+        status = 400
+    print(json_data, 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')
+    return jsonify(person=json_data, msg=msg), status
 
-            for vaccine in vaccines:
-                json_data.append(flatten(vaccine.to_dict(only=("dose_lab", "dose_date", "lot_num"))))
-
-            pic_sp = 1
-            vac_sp = 2
-            json_data.insert(0, {"pic_sp": pic_sp, "vac_sp": vac_sp})
-        return jsonify(json_data)
-
-@app.route('/info/entry', methods=['POST'])
+@app.route('/pictureEntry/<id>', methods=['GET'])  # Done
 @jwt_required()
-def entry_by_id():
+def entry_by_id(id):
     '''Returns the picture of a specific entry given it's ID'''
-    data = request.get_json(force=True)
-    if data:
-        id = data["id"]
-        entry = crud.get_entry(classes.Time_Entry, id)
-        json_data = []
-        if entry:
-            picture = entry.picture
-            pic = dm.img_bytes_to_base64(picture.picture_bytes)
-            json_data.append({"picture": pic})
-        return jsonify(json_data)
+    entry = crud.get_entry(classes.Time_Entry, int(id))
+    pic = None
+    if entry:
+        picture = entry.picture
+        pic = dm.img_bytes_to_base64(picture.picture_bytes)
+        msg = ''
+        status = 201
+    else:
+        msg = 'No entry with this ID'
+        status = 400
+
+    return jsonify(picture=pic, msg=msg), status
 
 @app.route('/info/employee', methods=['POST'])
 @jwt_required()
@@ -194,6 +194,39 @@ def employee_by_id():
                                  "vac_sp": vac_sp})
 
         return jsonify(json_data)
+
+@app.route('/info/currentEmployee', methods=['GET'])
+@jwt_required()
+def auth_employee_info():
+    '''Returns the picture and vaccine list of a specific person given it's ID'''
+    id = get_jwt_identity()
+    person = crud.get_entry(classes.Person, id)
+    json_data = []
+    if person:
+        first_picture = crud.pictures_by_person(person)[0]
+        pic = dm.img_bytes_to_base64(first_picture.picture_bytes)
+        json_data.append({"picture": pic})
+
+        vaccines = crud.vaccines_by_person(person)
+
+        for vaccine in vaccines:
+            json_data.append(flatten(vaccine.to_dict(only=("dose_lab", "dose_date", "lot_num"))))
+
+        comments = crud.comments_by_employee(crud.get_entry(classes.Employee, id))
+
+        for comments in comments:
+            json_data.append(flatten(comments.to_dict(only=("timestamp", "text"))))
+
+        json_data.append(flatten(person.to_dict(
+            only=('first_name', 'last_name', 'identification_document', 'birth_date'))))
+
+        pic_sp = 1
+        vac_sp = 2
+        com_sp = vac_sp + len(vaccines)
+        per_sp = com_sp + len(comments)
+
+        json_data.insert(0, {"pic_sp": pic_sp, "vac_sp": vac_sp, "per_sp": per_sp})
+    return jsonify(json_data)
 
 @app.route('/regist/employee', methods=['POST'])
 @jwt_required()
