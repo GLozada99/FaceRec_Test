@@ -65,9 +65,9 @@ def _generate_person_picture_vaccines(data):
 
     return (person, picture, vaccine_list)
 
-@app.route('/persons', methods=['GET'])
+@app.route('/persons', methods=['GET'])  # Done
 @jwt_required()
-def list_persons():  # Done
+def list_persons():
     '''Returns all persons who are not employees'''
     all_persons = crud.get_entries(classes.Person)
     only_persons = [person for person in all_persons if not person.is_employee]
@@ -122,18 +122,16 @@ def list_time_entries():
     msg = '' if len(json_data) else 'No entries'
     return jsonify(result=json_data, msg=msg), 201
 
-@app.route('/person/<id>', methods=['GET'])
+@app.route('/person/<id>', methods=['GET'])  # Done
 @jwt_required()
 def person_by_id(id):
     '''Returns the picture and vaccine list of a specific person given it's ID'''
-    data = request.get_json(force=True)
     person = crud.get_entry(classes.Person, int(id))
     json_data = {}
     if person:
         first_picture = crud.pictures_by_person(person)[0]
         pic = dm.img_bytes_to_base64(first_picture.picture_bytes)
         json_data["picture"] = pic
-
         vaccines = crud.vaccines_by_person(person)
         json_data["vaccines"] = [flatten(vaccine.to_dict(only=("dose_lab", "dose_date", "lot_num")))
                                  for vaccine in vaccines]
@@ -142,7 +140,6 @@ def person_by_id(id):
     else:
         msg = 'No entry with this ID'
         status = 400
-    print(json_data, 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')
     return jsonify(person=json_data, msg=msg), status
 
 @app.route('/pictureEntry/<id>', methods=['GET'])  # Done
