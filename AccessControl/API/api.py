@@ -194,38 +194,34 @@ def employee_by_id():
 
         return jsonify(json_data)
 
-@app.route('/info/currentEmployee', methods=['GET'])
+@app.route('/currentEmployee', methods=['GET'])  # Done
 @jwt_required()
 def auth_employee_info():
-    '''Returns the picture and vaccine list of a specific person given it's ID'''
+    '''Returns the picture, and comment and vaccine list of the current employee'''
     id = get_jwt_identity()
-    person = crud.get_entry(classes.Person, id)
-    json_data = []
+    person = crud.get_entry(classes.Person, int(id))
+    json_data = {}
     if person:
         first_picture = crud.pictures_by_person(person)[0]
         pic = dm.img_bytes_to_base64(first_picture.picture_bytes)
-        json_data.append({"picture": pic})
+        json_data["picture"] = pic
 
         vaccines = crud.vaccines_by_person(person)
-
+        vaccine_list = []
         for vaccine in vaccines:
-            json_data.append(flatten(vaccine.to_dict(only=("dose_lab", "dose_date", "lot_num"))))
+            vaccine_list.append(flatten(vaccine.to_dict(only=("dose_lab", "dose_date", "lot_num"))))
+        json_data["vaccines"] = vaccine_list
 
         comments = crud.comments_by_employee(crud.get_entry(classes.Employee, id))
-
+        comment_list = []
         for comments in comments:
-            json_data.append(flatten(comments.to_dict(only=("timestamp", "text"))))
+            comment_list.append(flatten(comments.to_dict(only=("timestamp", "text"))))
+        json_data["comments"] = comment_list
 
-        json_data.append(flatten(person.to_dict(
-            only=('first_name', 'last_name', 'identification_document', 'birth_date'))))
+        json_data["person"] = flatten(person.to_dict(
+            only=('first_name', 'last_name', 'identification_document', 'birth_date', 'email', 'employee.position')))
 
-        pic_sp = 1
-        vac_sp = 2
-        com_sp = vac_sp + len(vaccines)
-        per_sp = com_sp + len(comments)
-
-        json_data.insert(0, {"pic_sp": pic_sp, "vac_sp": vac_sp, "per_sp": per_sp})
-    return jsonify(json_data)
+    return jsonify(result=json_data), HTTPStatus.OK
 
 @app.route('/regist/employee', methods=['POST'])
 @jwt_required()
