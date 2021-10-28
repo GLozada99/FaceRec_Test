@@ -43,7 +43,9 @@ def main():
 
         IP_camera_address = 'rtsp://gustavo:123456789Gu@10.0.0.121:554/Streaming/Channels/102'
         # face_recog_live(faceNet,maskNet,IP_camera_address)
-        asyncio.run(func.face_recog_live(faceNet, maskNet, IP_camera_address))
+        # asyncio.run(func.face_recog_live(faceNet, maskNet, IP_camera_address))
+        asyncio.run(func.face_recog_live(faceNet, maskNet))
+
     elif args['add_picture_directory']:
         dm.insert_picture_directory(args['add_picture_directory'])
     elif args['face_recog_file']:

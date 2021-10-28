@@ -3,11 +3,13 @@ import base64
 import csv
 import io
 import os
+import re
 from datetime import datetime, timedelta
 
 import requests
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from http import HTTPStatus
 from flask_jwt_extended import (JWTManager, create_access_token,
                                 get_jwt_identity, jwt_required)
 from flatten_json import flatten
@@ -30,7 +32,7 @@ CORS(app)
 
 def _generate_person_picture_vaccines(data):
     # Person data
-    identification_doc = data['identification_doc']
+    identification_doc = re.sub('[^a-zA-Z0-9]', '', data['identification_doc'])
     first_name = data['first_name']
     last_name = data['last_name']
     birth_date = data['birth_date']
@@ -77,7 +79,7 @@ def list_persons():
             only=('id', 'first_name', 'last_name',
                   'identification_document', 'birth_date', 'email')))
     msg = '' if len(json_data) else 'No entries'
-    return jsonify(result=json_data, msg=msg), 201
+    return jsonify(result=json_data, msg=msg), HTTPStatus.OK
 
 @app.route('/list/employees', methods=['GET'])
 def list_employees():
@@ -120,7 +122,7 @@ def list_time_entries():
             only=('id', 'action', 'action_time', 'person.id', 'person.first_name', 'person.last_name',
                   ))))
     msg = '' if len(json_data) else 'No entries'
-    return jsonify(result=json_data, msg=msg), 201
+    return jsonify(result=json_data, msg=msg), HTTPStatus.OK
 
 @app.route('/person/<id>', methods=['GET'])  # Done
 @jwt_required()
@@ -136,10 +138,10 @@ def person_by_id(id):
         json_data["vaccines"] = [flatten(vaccine.to_dict(only=("dose_lab", "dose_date", "lot_num")))
                                  for vaccine in vaccines]
         msg = ''
-        status = 201
+        status = HTTPStatus.OK
     else:
         msg = 'No entry with this ID'
-        status = 400
+        status = HTTPStatus.BAD_REQUEST
     return jsonify(person=json_data, msg=msg), status
 
 @app.route('/pictureEntry/<id>', methods=['GET'])  # Done
@@ -152,10 +154,10 @@ def entry_by_id(id):
         picture = entry.picture
         pic = dm.img_bytes_to_base64(picture.picture_bytes)
         msg = ''
-        status = 201
+        status = HTTPStatus.OK
     else:
         msg = 'No entry with this ID'
-        status = 400
+        status = HTTPStatus.BAD_REQUEST
 
     return jsonify(picture=pic, msg=msg), status
 
@@ -246,11 +248,11 @@ def regist_employees():
             crud.add_entry(picture)
             for vaccine in vaccine_list:
                 crud.add_entry(vaccine)
-            return jsonify(success=True), 201
+            return jsonify(success=True), HTTPStatus.OK
         else:
             msg = 'No correct picture'
 
-    return jsonify(msg=msg), 401
+    return jsonify(msg=msg), 406
 
 @app.route('/regist/bulk', methods=['POST'])
 @jwt_required()
@@ -270,9 +272,9 @@ def regist_bulk():
             for row in reader:
                 requests.post('http://localhost:5000/regist/employee', json=row)
             else:
-                return jsonify(success=True), 201
+                return jsonify(success=True), HTTPStatus.OK
 
-        return jsonify(msg="Errors in the file"), 401
+        return jsonify(msg="Errors in the file"), 406
 
 @app.route('/appointment', methods=['POST'])
 def make_appointment():
@@ -304,61 +306,57 @@ def make_appointment():
             crud.add_entry(picture)
             for vaccine in vaccine_list:
                 crud.add_entry(vaccine)
-            return jsonify(success=True), 201
+            return jsonify(success=True), HTTPStatus.OK
         else:
             msg = 'No correct picture'
 
-    return jsonify(msg=msg), 401
+    return jsonify(msg=msg), 406
 
-@app.route('/setPassword', methods=['POST'])
+@app.route('/newPassword', methods=['PUT'])  # Done
 def set_first_password():
     '''
     Sets a first password for an account given the id
     '''
     data = request.get_json(force=True)
     if data:
-        id = data['id']
-        password = data['password']
-        confirm_password = data['confirm_password']
-        employee = crud.get_entry(classes.Employee, id)
-        msg = ''
+        id = data.get('id')
+        password = data.get('password')
+        confirm_password = data.get('confirm_password')
+
+        try:
+            id = int(id)
+            employee = crud.get_entry(classes.Employee, id)
+        except ValueError:
+            employee = None
+
         if employee:
             if not employee.password:
-                if password.strip() == confirm_password.strip():
+                if (password and confirm_password) and (password.strip() == confirm_password.strip()):
                     hashed_password = dm.compute_hash(password)
                     employee.password = hashed_password
                     crud.update_entry(classes.Employee, employee)
-                    return jsonify(msg='Password set successfully'), 201
+                    msg = 'Password set successfully'
+                    status = HTTPStatus.OK
+                elif not (password and confirm_password):
+                    msg = 'No password was given'
+                    status = HTTPStatus.BAD_REQUEST
                 else:
                     msg = 'Passwords must be the same'
+                    status = HTTPStatus.BAD_REQUEST
+
             else:
                 msg = 'The account already has a password'
+                status = HTTPStatus.UNPROCESSABLE_ENTITY
         else:
             msg = 'No employee with this ID'
+            status = HTTPStatus.UNPROCESSABLE_ENTITY
+    else:
+        msg = 'No data was given'
+        status = HTTPStatus.BAD_REQUEST
 
-        return jsonify(msg=msg), 401
+    return jsonify(msg=msg), status
 
-@app.route('/password/new', methods=['POST'])
-def set_password():
-    '''
-    Sets a new password for an account given the id
-    '''
-    data = request.get_json(force=True)
-    if data:
-        id = data['id']
-        password = data['password']
-        employee = crud.get_entry(classes.Employee, id)
-        msg = ''
-        if employee:
-            hashed_password = dm.compute_hash(password)
-            employee.password = hashed_password
-            crud.update_entry(classes.Employee, employee)
-            return jsonify(success=True), 201
-        msg = 'No employee with this ID'
-
-        return jsonify(msg=msg), 401
-
-@app.route("/login", methods=["POST"])
+@app.route("/login", methods=["POST"])  # Done
 def login():
     data = request.get_json(force=True)
     if data:
@@ -370,17 +368,24 @@ def login():
             employee = crud.get_entry(classes.Employee, id)
         except ValueError:
             employee = None
+
+        access_token = ''
+        msg = 'Bad username or password'  # if there is no employee or the password is wrong, this will be the msg
+        status = HTTPStatus.BAD_REQUEST
+
         if employee:
             if employee.password:
                 if dm.compare_hash(password, employee.password):
                     access_token = create_access_token(identity=id)
-                    return jsonify(access_token=access_token)
+                    status = HTTPStatus.OK
+                    msg = 'Welcome'
             else:
-                return jsonify(msg='Must create password'), 401
+                msg = 'There is no password set for this user'
+                status = HTTPStatus.SEE_OTHER
 
-    return jsonify(msg='Bad username or password'), 401
+    return jsonify(msg=msg, access_token=access_token), status
 
-@app.route("/openDoor", methods=['GET'])
+@app.route("/openDoor", methods=['GET'])  # Done
 @jwt_required()
 async def openDoor():
     try:
@@ -396,11 +401,11 @@ async def openDoor():
 
         await mx.matrix_send_message(client, door_room_id, message)
         msg = 'Door oppened correctly'
-        code = 201
+        code = HTTPStatus.OK
         await mx.matrix_logout_close(client)
     except Exception:
         msg = 'Error opening door'
-        code = 401
+        code = HTTPStatus.SERVICE_UNAVAILABLE
 
     return jsonify(msg=msg), code
 
@@ -416,7 +421,7 @@ def protected():
         username = f'{user.person.first_name} {user.person.last_name}'
         is_admin = user.is_admin
 
-    return jsonify(username=username, is_admin=is_admin, id=current_user_id), 201
+    return jsonify(username=username, is_admin=is_admin, id=current_user_id), HTTPStatus.OK
 
 @app.route('/vaccine/regist', methods=['POST', 'GET'])
 def vaccine():
