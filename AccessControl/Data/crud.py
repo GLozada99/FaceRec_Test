@@ -93,7 +93,7 @@ def vaccines_by_person(person):
     return _session.query(classes.Vaccine).filter_by(person_id=person.id).all()
 
 def comments_by_employee(employee):
-    return _session.query(classes.Comment).filter_by(employee_id=employee.id).all()
+    return reversed(_session.query(classes.Comment).filter_by(employee_id=employee.id).all())
 
 def pictures_by_person(person):
     return _session.query(classes.Picture).filter_by(person_id=person.id).all()
