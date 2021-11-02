@@ -138,7 +138,7 @@ class Appointment(Base, SerializerMixin):
 class Comment(Base, SerializerMixin):
     __tablename__ = 'comments'
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
-    timestamp = sqlalchemy.Column(sqlalchemy.DateTime, default=datetime.now())
+    timestamp = sqlalchemy.Column(sqlalchemy.DateTime)
     text = sqlalchemy.Column(sqlalchemy.String(length=250))
     employee_id = sqlalchemy.Column(
         sqlalchemy.Integer, sqlalchemy.ForeignKey('employees.id'))
