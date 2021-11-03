@@ -163,7 +163,7 @@ def entry_by_id(id):
     return jsonify(picture=pic, msg=msg), status
 
 @app.route('/employee/<id>', methods=['GET', 'DELETE'])  # Done
-# @jwt_required()
+@jwt_required()
 def employee_methods(id):
     '''
     GET: Returns the picture, vaccine list and comment list of a specific employe given it's ID
@@ -185,11 +185,10 @@ def employee_methods(id):
             comments = crud.comments_by_employee(employee)
             json_data["comments"] = [flatten(comment.to_dict(
                 only=("timestamp", "text"))) for comment in comments]
-
         return jsonify(result=json_data), HTTPStatus.OK
     else:
         crud.delete_entry(classes.Person, int(id))
-        return jsonify(result='Employee deleted successfully'), HTTPStatus.OK
+        return jsonify(msg='Employee deleted successfully'), HTTPStatus.OK
 
 @app.route('/currentEmployee', methods=['GET'])  # Done
 @jwt_required()
