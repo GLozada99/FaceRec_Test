@@ -28,6 +28,8 @@ def get_entry(Class, id: int):
     if hasattr(entry, 'active'):
         if not entry.active:
             entry = None
+    elif Class == classes.Employee:
+        entry = entry if _session.query(classes.Person).get(id).active else None
 
     return entry
 
@@ -37,10 +39,15 @@ def get_entries(Class):
     Returns all entries in table of given class.
     If class uses soft delete, returns only active entries
     '''
-    entry = _session.query(Class).get(0)
+    entry = _session.query(Class).get(1)
     entries = None
+    print(hasattr(entry, 'active') or hasattr(entry, 'person'))
     if hasattr(entry, 'active'):
         entries = _session.query(Class).filter_by(active=True)
+    elif Class == classes.Employee:  # this elif is awful, but I was desperate
+        person_entries = _session.query(classes.Person).filter_by(active=True)
+        person_ids = [person.id for person in person_entries]
+        entries = [employee for employee in _session.query(Class).all() if employee.id in person_ids]
     else:
         entries = _session.query(Class).all()
 
@@ -67,8 +74,8 @@ def delete_entry(Class, id: int):
     if hasattr(entry, 'active'):
         _set_entry_status(entry, False)
     else:
-        _session.query(Class).get(id).delete()
-        _session.commit()
+        _session.delete(entry)
+    _session.commit()
 
 
 def reactivate_entry(Class, id: int):
