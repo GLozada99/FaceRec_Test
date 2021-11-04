@@ -32,7 +32,7 @@ def main():
 
     if args['face_recog_live']:
         # load our serialized face detector model from disk
-        print(os.path.abspath(args["face"]), os.path.abspath(args["model"]))
+        # print(os.path.abspath(args["face"]), os.path.abspath(args["model"]))
         prototxtPath = os.path.sep.join(
             [os.path.abspath(args["face"]), "deploy.prototxt"])
         weightsPath = os.path.sep.join([os.path.abspath(args["face"]),

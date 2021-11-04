@@ -41,7 +41,6 @@ def get_entries(Class):
     '''
     entry = _session.query(Class).get(1)
     entries = None
-    print(hasattr(entry, 'active') or hasattr(entry, 'person'))
     if hasattr(entry, 'active'):
         entries = _session.query(Class).filter_by(active=True)
     elif Class == classes.Employee:  # this elif is awful, but I was desperate
@@ -104,3 +103,16 @@ def comments_by_employee(employee):
 
 def pictures_by_person(person):
     return _session.query(classes.Picture).filter_by(person_id=person.id).all()
+
+def get_all_pictures():
+    return (_session.query(classes.Picture).join(classes.Picture.person).
+            filter(classes.Person.active).all())
+
+def get_employees_pictures():
+    return (_session.query(classes.Picture).join(classes.Picture.person).
+            join(classes.Person.employee).filter(classes.Person.active).all())
+
+def get_accepted_appointments_pictures():
+    return (_session.query(classes.Picture).join(classes.Picture.person).
+            join(classes.Appointment.person).filter(classes.Person.active).
+            filter(classes.Appointment.accepted).all())

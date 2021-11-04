@@ -157,6 +157,8 @@ def face_recog_file(picture_path, show_pictures=False):
     # getting data of known pictures through database
     # list of tuples (person_id, face_enconding)
     pics = dm.get_pictures_encodings()
+    # pics = dm.get_pictures_encodings_by_type(classes.PictureClassification.ALL)
+    print(pics)
     person_ids = []
     encodings = []
     pic_ids = []
@@ -193,7 +195,9 @@ def face_recog_file(picture_path, show_pictures=False):
 
 async def face_recog_live(faceNet, maskNet, camera_address=0):
 
-    pics = dm.get_pictures_encodings()
+    # pics = dm.get_pictures_encodings()
+    pics = dm.get_pictures_encodings_by_type(classes.PictureClassification.ALL_ACTIVE)
+    
     # list of tuples (person_id, face_enconding)
     person_ids = []
     encodings = []

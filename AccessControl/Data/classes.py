@@ -1,6 +1,8 @@
-from datetime import datetime, timedelta
-import sqlalchemy
 import os
+from datetime import datetime, timedelta
+from enum import Enum
+
+import sqlalchemy
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy_serializer import SerializerMixin
 
@@ -18,6 +20,11 @@ engine = sqlalchemy.create_engine(
 
 # getting base for classes
 Base = declarative_base()
+
+class PictureClassification(Enum):
+    ALL_ACTIVE = 0
+    EMPLOYEES_ACTIVE = 1
+    ACCEPTED_APPOINTMENTS = 2
 
 # creating clases
 

@@ -140,6 +140,27 @@ def get_pictures_encodings():
 
     return pic_list
 
+def get_pictures_encodings_by_type(type):
+    '''
+    Returns list of tuples in the format (person_id, face_encoding, pic_id)
+    '''
+    pics = None
+    if type == classes.PictureClassification.ALL_ACTIVE:
+        pics = crud.get_all_pictures()
+    elif type == classes.PictureClassification.EMPLOYEES_ACTIVE:
+        pics = crud.get_employees_pictures()
+    elif type == classes.PictureClassification.APPOINTMENTS_ACCEPTED:
+        pics = crud.get_accepted_appointments_pictures()
+
+    pic_list = []
+    for pic in pics:
+        person_id = pic.person_id
+        pic_id = pic.id
+        face_encodings = unprocess_picture(pic.face_bytes)
+        pic_list.append((person_id, face_encodings, pic_id))
+
+    return pic_list
+
 def get_pictures():
     pics = []
     for pic in crud.get_entries(classes.Picture):
@@ -155,5 +176,4 @@ def compute_hash(raw_string: str):
 def compare_hash(raw_string: str, hash_string: str):
     result = compute_hash(raw_string) == hash_string
     return result
-
 
