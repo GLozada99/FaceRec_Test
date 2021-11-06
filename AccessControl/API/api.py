@@ -86,11 +86,14 @@ def list_employees():
     employees = crud.get_entries(classes.Employee)
     json_data = []
 
-    for dat in employees:
-        json_data.append(flatten(dat.to_dict(
+    for emp in employees:
+        data = flatten(emp.to_dict(
             only=('id', 'person.first_name', 'person.last_name',
                   'person.identification_document', 'person.birth_date',
-                  'position', 'person.email', 'start_date', 'person.role.value', 'person.role.name'))))
+                  'position', 'person.email', 'start_date')))
+        data["person_role_name"] = emp.person.role.name
+        data["person_role_value"] = emp.person.role.value
+        json_data.append(data)
     msg = '' if len(json_data) else 'No entries'
 
     return jsonify(result=json_data, msg=msg), HTTPStatus.OK
@@ -230,9 +233,10 @@ def regist_employees():
         # Employee data
         position = data['position']
         start_date = data['start_date']
+        password = data.get('password', default='')
         employee = classes.Employee(id=person.id, position=position,
-                                    start_date=start_date, person=person)
-
+                                    start_date=start_date, person=person, password=password)
+        
         if picture:
             crud.add_entry(employee)
             crud.add_entry(picture)
