@@ -1,3 +1,4 @@
+wheel
 face_recognition==1.3.0
 numpy==1.19.4
 icecream==2.1.1
@@ -14,3 +15,4 @@ flatten-json
 opencv-python==4.5.2.54
 matrix-nio==0.18.6
 flask[async]
+
