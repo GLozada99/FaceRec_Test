@@ -26,6 +26,12 @@ class PictureClassification(Enum):
     EMPLOYEES_ACTIVE = 1
     ACCEPTED_APPOINTMENTS = 2
 
+class Role(Enum):
+    PERSON = 0
+    EMPLOYEE = 1
+    ADMIN = 2
+    SUPER_ADMIN = 3
+
 # creating clases
 
 class Person(Base, SerializerMixin):
@@ -37,7 +43,7 @@ class Person(Base, SerializerMixin):
     last_name = sqlalchemy.Column(sqlalchemy.String(length=30))
     birth_date = sqlalchemy.Column(sqlalchemy.Date)
     email = sqlalchemy.Column(sqlalchemy.String(length=30))
-    is_employee = sqlalchemy.Column(sqlalchemy.Boolean, default=False)
+    role = sqlalchemy.Column(sqlalchemy.Enum(Role))
     active = sqlalchemy.Column(sqlalchemy.Boolean, default=True)
 
     employee = sqlalchemy.orm.relationship(
@@ -59,7 +65,6 @@ class Employee(Base, SerializerMixin):
     password = sqlalchemy.Column(sqlalchemy.String(length=64))
     position = sqlalchemy.Column(sqlalchemy.String(length=30))
     start_date = sqlalchemy.Column(sqlalchemy.Date)
-    is_admin = sqlalchemy.Column(sqlalchemy.Boolean)
 
     person = sqlalchemy.orm.relationship("Person", back_populates="employee")
     appointments = sqlalchemy.orm.relationship("Appointment", back_populates="employee")

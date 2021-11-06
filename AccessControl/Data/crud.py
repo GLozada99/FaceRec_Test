@@ -92,6 +92,14 @@ def update_entry(Class, entry):
     current_entry.__dict__.update(entry.__dict__)
     _session.commit()
 
+def get_persons():
+    '''
+    Returns all persons who are not employees
+    '''
+    print(get_entry(classes.Person, 1).role)
+    return (_session.query(classes.Person).
+            filter(classes.Person.role == classes.Role.PERSON).filter(classes.Person.active).all())
+
 def person_by_ident_doc(identification_document):
     return _session.query(classes.Person).filter_by(identification_document=identification_document).all()
 
@@ -110,9 +118,9 @@ def get_all_pictures():
 
 def get_employees_pictures():
     return (_session.query(classes.Picture).join(classes.Picture.person).
-            join(classes.Person.employee).filter(classes.Person.active).all())
+            filter(classes.Person.role >= classes.Role.PERSON).filter(classes.Person.active).all())
 
 def get_accepted_appointments_pictures():
     return (_session.query(classes.Picture).join(classes.Picture.person).
-            join(classes.Appointment.person).filter(classes.Person.active).
-            filter(classes.Appointment.accepted).all())
+            join(classes.Appointment.person).filter(classes.Appointment.accepted).
+            filter(classes.Person.active).all())

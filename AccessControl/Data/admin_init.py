@@ -6,11 +6,11 @@ import AccessControl.Data.classes as classes
 from AccessControl.API.api import _generate_person_picture_vaccines
 
 def admin_init():
-    with open('../employees.csv') as file:
+    with open('./employees.csv') as file:
         reader = csv.DictReader(file)
         for row in reader:
             person, picture, vaccine_list = _generate_person_picture_vaccines(row)
-            person.is_employee = True
+            person.role = classes.Role.SUPER_ADMIN
             # Employee data
             position = row['position']
             start_date = row['start_date']
@@ -18,7 +18,6 @@ def admin_init():
             employee = classes.Employee(
                 position=position, start_date=start_date,
                 password=password, person=person)
-            employee.is_admin = bool(row['is_admin'])
 
             if picture:
                 crud.add_entry(employee)
