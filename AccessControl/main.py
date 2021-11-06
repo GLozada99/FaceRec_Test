@@ -41,10 +41,11 @@ def main():
         # load the face mask detector model from disk
         maskNet = load_model(os.path.abspath(args["model"]))
 
-        IP_camera_address = 'rtsp://gustavo:123456789Gu@10.0.0.121:554/Streaming/Channels/102'
-        # face_recog_live(faceNet,maskNet,IP_camera_address)
-        # asyncio.run(func.face_recog_live(faceNet, maskNet, IP_camera_address))
-        asyncio.run(func.face_recog_live(faceNet, maskNet))
+        # IP_camera_address = 'rtsp://gustavo:123456789Gu@10.0.0.121:554/Streaming/Channels/102'
+        IP_camera_address = 'rtsp://gustavo:123456789Gu@sawr.ddns.net:2001/Streaming/Channels/102'
+
+        asyncio.run(func.face_recog_live(faceNet, maskNet, IP_camera_address))
+        # asyncio.run(func.face_recog_live(faceNet, maskNet))
 
     elif args['add_picture_directory']:
         dm.insert_picture_directory(args['add_picture_directory'])
