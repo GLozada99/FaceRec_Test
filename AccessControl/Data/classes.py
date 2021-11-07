@@ -32,6 +32,13 @@ class Role(Enum):
     ADMIN = 2
     SUPER_ADMIN = 3
 
+class AppointmentStatus(Enum):
+    PENDING = 0
+    ACCEPTED = 1
+    REJECTED = 2
+    ONGOING = 3
+    FINALIZED = 4
+
 # creating clases
 
 class Person(Base, SerializerMixin):
@@ -134,8 +141,7 @@ class Appointment(Base, SerializerMixin):
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
     appointment_start = sqlalchemy.Column(sqlalchemy.DateTime)
     appointment_end = sqlalchemy.Column(sqlalchemy.DateTime)
-    accepted = sqlalchemy.Column(sqlalchemy.Boolean, default=False)
-    accomplished = sqlalchemy.Column(sqlalchemy.Boolean, default=False)
+    status = sqlalchemy.Column(sqlalchemy.Enum(AppointmentStatus), default=AppointmentStatus.PENDING)
 
     person_id = sqlalchemy.Column(
         sqlalchemy.Integer, sqlalchemy.ForeignKey('persons.id'))

@@ -1,4 +1,5 @@
 import csv
+import sys
 import AccessControl.Data.crud as crud
 import AccessControl.Data.data_manipulation as dm
 import AccessControl.Data.classes as classes
@@ -6,10 +7,16 @@ import AccessControl.Data.classes as classes
 from AccessControl.API.api import _generate_person_picture_vaccines
 
 def admin_init():
+    maxInt = sys.maxsize
+    try:
+        csv.field_size_limit(maxInt)
+    except OverflowError:
+        maxInt = int(maxInt / 10)
+
     with open('./employees.csv') as file:
         reader = csv.DictReader(file)
         for row in reader:
-            person, picture, vaccine_list = _generate_person_picture_vaccines(row)
+            person, picture, vaccine_list, _ = _generate_person_picture_vaccines(row)
             person.role = classes.Role(int(row['role']))
 
             # person.role = classes.Role.SUPER_ADMIN

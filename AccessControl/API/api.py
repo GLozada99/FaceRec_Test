@@ -4,12 +4,13 @@ import csv
 import io
 import os
 import re
+import sys
 from datetime import datetime, timedelta
+from http import HTTPStatus
 
 import requests
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from http import HTTPStatus
 from flask_jwt_extended import (JWTManager, create_access_token,
                                 get_jwt_identity, jwt_required)
 from flatten_json import flatten
@@ -37,10 +38,26 @@ def _generate_person_picture_vaccines(data):
     last_name = data['last_name']
     birth_date = data['birth_date']
     email = data['email']
-    person = classes.Person(identification_document=identification_doc,
-                            first_name=first_name, last_name=last_name,
-                            email=email, birth_date=birth_date)
-    # Picture data
+
+    person = crud.person_by_ident_doc(identification_doc)
+    existent = False
+    if person:
+        person = person[0]
+        if not person.active:
+            person.identification_document = identification_doc
+            person.first_name = first_name
+            person.last_name = last_name
+            person.email = email
+            person.birth_date = birth_date
+            person.active = True
+            existent = True
+        else:
+            raise ValueError('The employee already exists')
+    else:
+        person = classes.Person(identification_document=identification_doc,
+                                first_name=first_name, last_name=last_name,
+                                email=email, birth_date=birth_date)
+
     base64_pic = data['base64_doc']
     picture = None
     try:
@@ -49,13 +66,24 @@ def _generate_person_picture_vaccines(data):
         pic_bytes = base64.b64decode(base64_pic)
     pic_io = io.BytesIO(pic_bytes)
     picture_data_constructor = dm.process_picture_file(pic_io)
+
     if picture_data_constructor:
         raw_bin_pic, face_encoding = picture_data_constructor
-        picture = classes.Picture(picture_bytes=raw_bin_pic,
-                                  face_bytes=face_encoding, person=person)
+        if existent:
+            picture = crud.pictures_by_person(person)[0]
+            picture.picture_bytes = raw_bin_pic
+            picture.face_bytes = face_encoding
+            picture.person = person
+        else:
+            picture = classes.Picture(
+                picture_bytes=raw_bin_pic, face_bytes=face_encoding, person=person)
 
     # Vaccine data
     vaccine_list = []
+    old_vaccines = crud.vaccines_by_person(person)
+    for vac in old_vaccines:
+        crud.delete_entry(classes.Vaccine, vac.id)
+
     for i in range(1, 4):
         dose_lab = data.get(f'dose_lab_{i}')
         dose_date = data.get(f'dose_date_{i}')
@@ -64,8 +92,7 @@ def _generate_person_picture_vaccines(data):
             vaccine = classes.Vaccine(
                 dose_lab=dose_lab, dose_date=dose_date, lot_num=lot_num, person=person)
             vaccine_list.append(vaccine)
-
-    return (person, picture, vaccine_list)
+    return (person, picture, vaccine_list, existent)
 
 @app.route('/persons', methods=['GET'])  # Done
 @jwt_required()
@@ -97,6 +124,43 @@ def list_employees():
     msg = '' if len(json_data) else 'No entries'
 
     return jsonify(result=json_data, msg=msg), HTTPStatus.OK
+
+@app.route('/appointments', methods=['GET'])
+def list_appointments():
+    '''Returns all appointments'''
+    appointments = crud.get_entries(classes.Appointments)
+    json_data = []
+
+    for appointment in appointments:
+        data = flatten(appointment.to_dict(
+            only=('id', 'appointment_start', 'appointment_end',
+                  'accepted', 'accomplished', 'employee.person.first_name',
+                  'employee.person.last_name', 'employee.id', 'employee.position')))
+        data["appointment_status_name"] = appointment.status.name
+        data["appointment_status_value"] = appointment.status.value
+        json_data.append(data)
+    msg = '' if len(json_data) else 'No entries'
+
+    return jsonify(result=json_data, msg=msg), HTTPStatus.OK
+
+@app.route('/appointment/<id>', methods=['GET'])
+def appointment_by_id(id):
+    '''Returns appointment data regarding the person who made the appointment'''
+    appointment = crud.get_entry(classes.Appointment, int(id))
+    json_data = {}
+
+    if appointment:
+        first_picture = crud.pictures_by_person(appointment.person)[0]
+        pic = dm.img_bytes_to_base64(first_picture.picture_bytes)
+        json_data['picture'] = pic
+        json_data['person_info'] = flatten(appointment.to_dict(
+            only=('person.identification_doc', 'person.first_name', 'person.last_name')))
+        msg = ''
+        status = HTTPStatus.OK
+    else:
+        msg = 'No entry with this ID'
+        status = HTTPStatus.BAD_REQUEST
+    return jsonify(result=json_data, msg=msg), status
 
 @app.route('/list/vaccines/', methods=['POST'])
 def person_by_ident_doc():
@@ -221,40 +285,69 @@ def auth_employee_info():
 
     return jsonify(result=json_data), HTTPStatus.OK
 
-@app.route('/regist/employee', methods=['POST'])
+@app.route('/employee', methods=['POST'])
 @jwt_required()
 def regist_employees():
     '''Receives employee data and inserts it to the database'''
     data = request.get_json(force=True)
+    error = False
+
     msg = 'No correct data'
+    status = HTTPStatus.BAD_REQUEST
     if data:
-        person, picture, vaccine_list = _generate_person_picture_vaccines(data)
-        person.role = classes.Role(int(data['role']))
-        # Employee data
-        position = data['position']
-        start_date = data['start_date']
-        password = data.get('password', default='')
-        employee = classes.Employee(id=person.id, position=position,
-                                    start_date=start_date, person=person, password=password)
-        
-        if picture:
-            crud.add_entry(employee)
-            crud.add_entry(picture)
-            for vaccine in vaccine_list:
-                crud.add_entry(vaccine)
-            return jsonify(success=True), HTTPStatus.OK
-        else:
-            msg = 'No correct picture'
+        try:
+            person, picture, vaccine_list, existent = _generate_person_picture_vaccines(data)
+        except ValueError as e:
+            msg = str(e)
+            status = HTTPStatus.NOT_ACCEPTABLE
+            error = True
 
-    return jsonify(msg=msg), 406
+        if not error:
+            person.role = classes.Role(int(data['role']))
+            # Employee data
+            position = data['position']
+            start_date = data['start_date']
+            password = data.get('password', '')
+            password = dm.compute_hash(password) if password else password
+            if existent:
+                employee = crud.get_entry(classes.Employee, person.id, inactive=True)
+                employee.position = position
+                employee.start_date = start_date
+                employee.password = password
+            else:
+                employee = classes.Employee(id=person.id, position=position,
+                                            start_date=start_date, person=person, password=password)
 
-@app.route('/regist/bulk', methods=['POST'])
+            if picture:
+                if not existent:
+                    crud.add_entry(employee)
+                    crud.add_entry(picture)
+                else:
+                    crud.commit()
+
+                for vaccine in vaccine_list:
+                    crud.add_entry(vaccine)
+
+                msg = 'Employee added succesfully'
+                status = HTTPStatus.OK
+            else:
+                msg = 'No correct picture'
+
+    return jsonify(msg=msg), status
+
+@app.route('/bulk', methods=['POST'])
 @jwt_required()
 def regist_bulk():
-    '''Receives a CSV file (on base encoding) containing
+    '''Receives a CSV file (on base64 encoding) containing
     multiple employees and inserts them into the database'''
     json_data = request.get_json(force=True)
+    msg = 'Error reading the file'
     if json_data:
+        maxInt = sys.maxsize
+        try:
+            csv.field_size_limit(maxInt)
+        except OverflowError:
+            maxInt = int(maxInt / 10)
         b64_string = json_data.get('base64_doc')
         if b64_string:
             try:
@@ -263,12 +356,25 @@ def regist_bulk():
                 b64_doc = base64.b64decode(b64_string)
 
             reader = csv.DictReader(io.StringIO(b64_doc.decode('utf-8')))
+            statuses = set()
             for row in reader:
-                requests.post('http://localhost:5000/regist/employee', json=row)
+                response = requests.post(
+                    'http://localhost:5000/employee', json=row,
+                    headers={'Authorization': request.headers['Authorization']})
+                # print(a.status_code)
+                statuses.add(response.status_code)
+            if statuses.intersection({HTTPStatus.BAD_REQUEST, HTTPStatus.NOT_ACCEPTABLE}):
+                msg = 'There was a problem importing employees, \
+                either at least one employee already exists, or one picture is not correct'
+                status = HTTPStatus.NOT_ACCEPTABLE
+            elif statuses.intersection({HTTPStatus.OK}):
+                msg = 'Employees imported succesfully'
+                status = HTTPStatus.OK
             else:
-                return jsonify(success=True), HTTPStatus.OK
+                msg = 'Unknown Error'
+                status = HTTPStatus.INTERNAL_SERVER_ERROR
 
-        return jsonify(msg='Errors in the file'), 406
+        return jsonify(msg=msg), status
 
 @app.route('/appointment', methods=['POST'])
 def make_appointment():
@@ -279,7 +385,7 @@ def make_appointment():
     data = request.get_json(force=True)
     msg = 'No correct data'
     if data:
-        person, picture, vaccine_list = _generate_person_picture_vaccines(data)
+        person, picture, vaccine_list, _ = _generate_person_picture_vaccines(data)
 
         person.role = classes.Role.PERSON
         employee_id = int(data['employee_id'])
@@ -293,7 +399,6 @@ def make_appointment():
 
         appointment = classes.Appointment(
             appointment_start=appointment_start,
-            appointment_end=appointment_start + timedelta(hours=1),
             person=person, employee=employee)
 
         if picture:
@@ -329,7 +434,7 @@ def set_first_password():
                 if (password and confirm_password) and (password.strip() == confirm_password.strip()):
                     hashed_password = dm.compute_hash(password)
                     employee.password = hashed_password
-                    crud.update_entry(classes.Employee, employee)
+                    crud.commit()
                     msg = 'Password set successfully'
                     status = HTTPStatus.OK
                 elif not (password and confirm_password):

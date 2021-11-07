@@ -13,23 +13,38 @@ def add_entry(entry):
     Entry must be a class object that derives from
     DeclarativeMeta class on sqlalchemy
     '''
+    # print('inicio', entry)
+    # if entry.__class__ == classes.Person:  # Spaghetti code
+    #     print('person')
+    #     person = person_by_ident_doc(entry.identification_document)
+    #     if person:
+    #         person.__dict__.update(entry.__dict__)
+    # elif entry.__class__ == classes.Employee:
+    #     person = person_by_ident_doc(entry.person.identification_document)[0]
+    #     print(person)
+    #     if person:
+    #         employee = get_entry(classes.Employee, person.id)
+    #         if employee:
+    #             employee.__dict__.update(entry.__dict__)
+    # else:
+    #     print('else')
     _session.add(entry)
     _session.commit()
     return True
 
 
-def get_entry(Class, id: int):
+def get_entry(Class, id: int, inactive=False):
     '''
     Returns entry in table of given class based on id.
-    If class uses soft delete, returns only if it's active
+    If class uses soft delete, returns only if it's active or inactive flag is True
     '''
     entry = _session.query(Class).get(id)
 
     if hasattr(entry, 'active'):
         if not entry.active:
             entry = None
-    elif Class == classes.Employee:
-        entry = entry if _session.query(classes.Person).get(id).active else None
+    elif Class == classes.Employee:  # Not proud
+        entry = entry if _session.query(classes.Person).get(id).active or inactive else None
 
     return entry
 
@@ -86,17 +101,18 @@ def reactivate_entry(Class, id: int):
         _set_entry_status(entry, False)
 
 
-def update_entry(Class, entry):
+def commit():
+    _session.commit()
+
+def update_entry_with_entry(Class, source, destination):
     # not very sure about this one...
-    current_entry = get_entry(Class, entry.id)
-    current_entry.__dict__.update(entry.__dict__)
+    destination.__dict__.update(source.__dict__)
     _session.commit()
 
 def get_persons():
     '''
     Returns all persons who are not employees
     '''
-    print(get_entry(classes.Person, 1).role)
     return (_session.query(classes.Person).
             filter(classes.Person.role == classes.Role.PERSON).filter(classes.Person.active).all())
 

@@ -176,4 +176,3 @@ def compute_hash(raw_string: str):
 def compare_hash(raw_string: str, hash_string: str):
     result = compute_hash(raw_string) == hash_string
     return result
-
