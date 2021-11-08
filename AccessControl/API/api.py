@@ -128,14 +128,14 @@ def list_employees():
 @app.route('/appointments', methods=['GET'])
 def list_appointments():
     '''Returns all appointments'''
-    appointments = crud.get_entries(classes.Appointments)
+    appointments = crud.get_entries(classes.Appointment)
     json_data = []
 
     for appointment in appointments:
         data = flatten(appointment.to_dict(
             only=('id', 'appointment_start', 'appointment_end',
-                  'accepted', 'accomplished', 'employee.person.first_name',
-                  'employee.person.last_name', 'employee.id', 'employee.position')))
+                  'employee.person.first_name', 'employee.person.last_name',
+                  'employee.id', 'employee.position')))
         data["appointment_status_name"] = appointment.status.name
         data["appointment_status_value"] = appointment.status.value
         json_data.append(data)
@@ -153,8 +153,11 @@ def appointment_by_id(id):
         first_picture = crud.pictures_by_person(appointment.person)[0]
         pic = dm.img_bytes_to_base64(first_picture.picture_bytes)
         json_data['picture'] = pic
-        json_data['person_info'] = flatten(appointment.to_dict(
-            only=('person.identification_doc', 'person.first_name', 'person.last_name')))
+        json_data['person_info'] = flatten(appointment.person.to_dict(
+            only=('identification_document', 'first_name', 'last_name', 'email')))
+        vaccines = crud.vaccines_by_person(appointment.person)
+        json_data['vaccines'] = [flatten(vaccine.to_dict(
+            only=('dose_lab', 'dose_date', 'lot_num'))) for vaccine in vaccines]
         msg = ''
         status = HTTPStatus.OK
     else:
