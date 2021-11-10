@@ -133,11 +133,11 @@ def list_appointments():
 
     for appointment in appointments:
         data = flatten(appointment.to_dict(
-            only=('id', 'appointment_start', 'appointment_end',
+            only=('id', 'start', 'end',
                   'employee.person.first_name', 'employee.person.last_name',
                   'employee.id', 'employee.position')))
-        data["appointment_status_name"] = appointment.status.name
-        data["appointment_status_value"] = appointment.status.value
+        data["status_name"] = appointment.status.name
+        data["status_value"] = appointment.status.value
         json_data.append(data)
     msg = '' if len(json_data) else 'No entries'
 
@@ -424,7 +424,7 @@ def make_appointment():
         appointment_start = datetime.strptime(full_date, '%Y-%m-%d %H:%M:%S')
 
         appointment = classes.Appointment(
-            appointment_start=appointment_start,
+            start=appointment_start,
             person=person, employee=employee)
 
         if picture:

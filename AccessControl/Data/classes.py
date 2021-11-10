@@ -141,8 +141,8 @@ class Time_Entry(Base, SerializerMixin):
 class Appointment(Base, SerializerMixin):
     __tablename__ = 'appointments'
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
-    appointment_start = sqlalchemy.Column(sqlalchemy.DateTime)
-    appointment_end = sqlalchemy.Column(sqlalchemy.DateTime)
+    start = sqlalchemy.Column(sqlalchemy.DateTime)
+    end = sqlalchemy.Column(sqlalchemy.DateTime)
     status = sqlalchemy.Column(sqlalchemy.Enum(AppointmentStatus), default=AppointmentStatus.PENDING)
 
     person_id = sqlalchemy.Column(
