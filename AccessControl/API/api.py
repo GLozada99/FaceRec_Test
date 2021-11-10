@@ -85,8 +85,8 @@ def _generate_person_picture_vaccines(data):
         crud.delete_entry(classes.Vaccine, vac.id)
 
     for i in range(1, 4):
-        lab_num = data.get(f'dose_lab_{i}', -1)
-        dose_lab = classes.VaccineLab(int(lab_num)) if lab_num > -1 else ""
+        lab_num = int(data.get(f'dose_lab_{i}', -1))
+        dose_lab = classes.VaccineLab(lab_num) if lab_num > -1 else ""
         dose_date = data.get(f'dose_date_{i}')
         lot_num = data.get(f'lot_num_{i}')
         if dose_lab and dose_date and lot_num:
@@ -560,8 +560,8 @@ def add_vaccine():
         id = get_jwt_identity()
         employee = crud.get_entry(classes.Employee, int(id))
 
-        lab_num = data['dose_lab']
-        dose_lab = classes.VaccineLab(int(lab_num)) if lab_num > -1 else ""
+        lab_num = int(data['dose_lab'])
+        dose_lab = classes.VaccineLab(lab_num) if lab_num > -1 else ""
         dose_date = data['dose_date']
         lot_num = data['lot_num']
 
