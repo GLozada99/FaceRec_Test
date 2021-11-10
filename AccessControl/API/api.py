@@ -85,7 +85,11 @@ def _generate_person_picture_vaccines(data):
         crud.delete_entry(classes.Vaccine, vac.id)
 
     for i in range(1, 4):
-        lab_num = int(data.get(f'dose_lab_{i}', -1))
+        try:
+            lab_num = int(data.get(f'dose_lab_{i}'))
+        except ValueError:
+            lab_num = -1
+
         dose_lab = classes.VaccineLab(lab_num) if lab_num > -1 else ""
         dose_date = data.get(f'dose_date_{i}')
         lot_num = data.get(f'lot_num_{i}')
@@ -159,6 +163,8 @@ def appointment_by_id(id):
         vaccines = crud.vaccines_by_person(appointment.person)
         json_data['vaccines'] = [flatten(vaccine.to_dict(
             only=('dose_lab', 'dose_date', 'lot_num'))) for vaccine in vaccines]
+        for vac in json_data['vaccines']:
+            vac['dose_lab'] = classes.VaccineLab(int(vac["dose_lab"])).name
         msg = ''
         status = HTTPStatus.OK
     else:
@@ -203,7 +209,10 @@ def person_by_ident_doc():
                 only=('id', 'first_name', 'last_name', 'identification_document', 'birth_date',))))
             vaccines = crud.vaccines_by_person(person)
             for vaccine in vaccines:
-                json_data.append(flatten(vaccine.to_dict(only=('dose_lab', 'dose_date', 'lot_num'))))
+                vac = flatten(vaccine.to_dict(only=('dose_lab', 'dose_date', 'lot_num')))
+                vac['dose_lab'] = classes.VaccineLab(int(vac["dose_lab"])).name
+                json_data.append(vac)
+
         return jsonify(json_data)
 
 @app.route('/entries', methods=['GET'])  # Done
@@ -232,6 +241,8 @@ def person_by_id(id):
         vaccines = crud.vaccines_by_person(person)
         json_data['vaccines'] = [flatten(vaccine.to_dict(
             only=('dose_lab', 'dose_date', 'lot_num'))) for vaccine in vaccines]
+        for vac in json_data['vaccines']:
+            vac['dose_lab'] = classes.VaccineLab(int(vac["dose_lab"])).name
         msg = ''
         status = HTTPStatus.OK
     else:
@@ -275,7 +286,8 @@ def employee_methods(id):
 
             json_data['vaccines'] = [flatten(vaccine.to_dict(
                 only=('dose_lab', 'dose_date', 'lot_num'))) for vaccine in vaccines]
-
+            for vac in json_data['vaccines']:
+                vac['dose_lab'] = classes.VaccineLab(int(vac["dose_lab"])).name
             comments = crud.comments_by_employee(employee)
             json_data['comments'] = [flatten(comment.to_dict(
                 only=('timestamp', 'text'))) for comment in comments]
@@ -300,7 +312,8 @@ def auth_employee_info():
 
         json_data['vaccines'] = [flatten(vaccine.to_dict(
             only=('dose_lab', 'dose_date', 'lot_num'))) for vaccine in vaccines]
-
+        for vac in json_data['vaccines']:
+            vac['dose_lab'] = classes.VaccineLab(int(vac["dose_lab"])).name
         comments = crud.comments_by_employee(employee)
 
         json_data['comments'] = [flatten(comment.to_dict(
@@ -560,7 +573,11 @@ def add_vaccine():
         id = get_jwt_identity()
         employee = crud.get_entry(classes.Employee, int(id))
 
-        lab_num = int(data['dose_lab'])
+        try:
+            lab_num = int(data.get('dose_lab'))
+        except ValueError:
+            lab_num = -1
+
         dose_lab = classes.VaccineLab(lab_num) if lab_num > -1 else ""
         dose_date = data['dose_date']
         lot_num = data['lot_num']
