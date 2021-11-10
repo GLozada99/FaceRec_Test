@@ -345,7 +345,7 @@ def regist_employees():
             error = True
 
         if not error:
-            person.role = classes.Role(int(data['role']))
+            person.role = classes.PersonRole(int(data['role']))
             # Employee data
             position = data['position']
             start_date = data['start_date']
@@ -429,7 +429,7 @@ def make_appointment():
     if data:
         person, picture, vaccine_list, _ = _generate_person_picture_vaccines(data)
 
-        person.role = classes.Role.PERSON
+        person.role = classes.PersonRole.PERSON
         employee_id = int(data['employee_id'])
         employee = crud.get_entry(classes.Employee, employee_id)
 

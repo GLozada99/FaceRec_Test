@@ -17,9 +17,8 @@ def admin_init():
         reader = csv.DictReader(file)
         for row in reader:
             person, picture, vaccine_list, _ = _generate_person_picture_vaccines(row)
-            person.role = classes.Role(int(row['role']))
+            person.role = classes.PersonRole(int(row['role']))
 
-            # person.role = classes.Role.SUPER_ADMIN
             # Employee data
             position = row['position']
             start_date = row['start_date']
