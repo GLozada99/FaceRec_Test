@@ -165,6 +165,29 @@ def appointment_by_id(id):
         status = HTTPStatus.BAD_REQUEST
     return jsonify(result=json_data, msg=msg), status
 
+@app.route('/appointment-status', methods=['PUT'])
+def set_appointment_status():
+    '''Returns appointment data regarding the person who made the appointment'''
+    data = request.get_json(force=True)
+    msg = 'Error with data sent'
+    status = HTTPStatus.BAD_REQUEST
+    if data:
+        appointment = crud.get_entry(classes.Appointment, int(data['id']))
+        appointment_status = classes.AppointmentStatus(int(data['status']))
+
+        if appointment:
+            appointment.status = appointment_status
+            if appointment_status == classes.AppointmentStatus.FINALIZED:
+                appointment.appointment_end = datetime.now()
+            crud.commit()
+            msg = 'Status set successfully'
+            status = HTTPStatus.OK
+        else:
+            msg = 'No appointment with that ID'
+
+    return jsonify(msg=msg), status
+
+
 @app.route('/list/vaccines/', methods=['POST'])
 def person_by_ident_doc():
     '''Returns list of all the vaccines of a specific person given the identification_document number'''
