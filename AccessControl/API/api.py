@@ -6,6 +6,7 @@ import io
 import os
 import re
 import sys
+from decouple import config
 from datetime import datetime, timedelta
 from http import HTTPStatus
 
@@ -24,7 +25,7 @@ import AccessControl.Data.data_manipulation as dm
 import AccessControl.Functions.matrix_functions as mx
 
 ACCESS_EXPIRES = timedelta(hours=1)
-_secret = os.environ.get('SECRET')
+_secret = config('SECRET')
 
 app = Flask(__name__)
 jwt = JWTManager(app)
@@ -531,11 +532,11 @@ def login():
 async def openDoor():
     time_out = 3
     try:
-        server = 'https://matrix-client.matrix.org'
-        user = '@tavo9:matrix.org'
-        password = 'O1KhpTBn7D47'
-        device_id = 'LYTVJFQRJG'
-        door_room_name = '#doorLock:matrix.org'
+        server = config('MATRIX_SERVER')
+        user = config('MATRIX_USER')
+        password = config('MATRIX_PASSWORD')
+        device_id = config('MATRIX_DEVICE_ID')
+        door_room_name = config('MATRIX_ROOM_NAME_DOOR')
 
         client = await asyncio.wait_for(mx.matrix_login(server, user, password, device_id), 5)
         door_room_id = await asyncio.wait_for(mx.matrix_get_room_id(client, door_room_name), 5)

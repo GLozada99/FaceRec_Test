@@ -1,17 +1,18 @@
 import os
 from datetime import datetime, timedelta
 from enum import Enum
+from decouple import config
 
 import sqlalchemy
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy_serializer import SerializerMixin
 
 # setting up parameters
-_user = os.environ.get('MARIADB_USER')
-_password = os.environ.get('MARIADB_PASSWORD')
+_user = config('DB_USER')
+_password = config('DB_PASSWORD')
 _host = '127.0.0.1'
 _port = '5432'  # database port
-_database = 'SAWR'
+_database = config('DB_NAME')
 
 
 # getting engine
