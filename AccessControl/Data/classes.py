@@ -38,6 +38,8 @@ class AppointmentStatus(Enum):
     REJECTED = 2
     ONGOING = 3
     FINALIZED = 4
+    RUNNING_LATE = 5
+    NEVER_HAPPENED = 6
 
 # creating clases
 
