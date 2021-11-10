@@ -40,7 +40,7 @@ class AppointmentStatus(Enum):
     FINALIZED = 4
     RUNNING_LATE = 5
     NEVER_HAPPENED = 6
-    
+
 class VaccineLab(Enum):
     PFIZER = 0
     SINOVAC = 1
