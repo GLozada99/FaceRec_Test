@@ -40,6 +40,12 @@ class AppointmentStatus(Enum):
     FINALIZED = 4
     RUNNING_LATE = 5
     NEVER_HAPPENED = 6
+    
+class VaccineLab(Enum):
+    PFIZER = 0
+    SINOVAC = 1
+    ASTRAZENECA = 2
+    SPUTNIK = 3
 
 # creating clases
 
@@ -108,7 +114,7 @@ class Vaccine(Base, SerializerMixin):
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
     person_id = sqlalchemy.Column(
         sqlalchemy.Integer, sqlalchemy.ForeignKey('persons.id'))
-    dose_lab = sqlalchemy.Column(sqlalchemy.String(length=30))
+    dose_lab = sqlalchemy.Column(sqlalchemy.Enum(VaccineLab))
     lot_num = sqlalchemy.Column(sqlalchemy.String(length=20))
     dose_date = sqlalchemy.Column(sqlalchemy.Date)
 
