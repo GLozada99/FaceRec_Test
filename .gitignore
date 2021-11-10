@@ -3,3 +3,4 @@ __pycache__/
 sawr.egg-info
 AccessControl.egg-info
 .vscode
+.env

@@ -374,7 +374,6 @@ async def face_recog_live(faceNet, maskNet, camera_address=0):
     video_capture.release()
     cv2.destroyAllWindows()
 
-
 async def temp_okay(client, acceptable_time, room_id):
     temp_threshold = 38  # in degrees celcius
 

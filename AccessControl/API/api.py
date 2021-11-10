@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import base64
 import csv
 import io
@@ -525,25 +526,26 @@ def login():
 
     return jsonify(msg=msg, access_token=access_token), status
 
-@app.route('/openDoor', methods=['GET'])  # Done
+@app.route('/open-door', methods=['GET'])  # Done
 @jwt_required()
 async def openDoor():
+    time_out = 3
     try:
-        message = '1'
         server = 'https://matrix-client.matrix.org'
         user = '@tavo9:matrix.org'
         password = 'O1KhpTBn7D47'
         device_id = 'LYTVJFQRJG'
         door_room_name = '#doorLock:matrix.org'
 
-        client = await mx.matrix_login(server, user, password, device_id)
-        door_room_id = await mx.matrix_get_room_id(client, door_room_name)
+        client = await asyncio.wait_for(mx.matrix_login(server, user, password, device_id), 5)
+        door_room_id = await asyncio.wait_for(mx.matrix_get_room_id(client, door_room_name), 5)
 
-        await mx.matrix_send_message(client, door_room_id, message)
+        message = '1'
+        await asyncio.wait_for(mx.matrix_send_message(client, door_room_id, message), 5)
         msg = 'Door oppened correctly'
         code = HTTPStatus.OK
-        await mx.matrix_logout_close(client)
-    except Exception:
+        await asyncio.wait_for(mx.matrix_logout_close(client), 5)
+    except asyncio.TimeoutError:
         msg = 'Error opening door'
         code = HTTPStatus.SERVICE_UNAVAILABLE
 
