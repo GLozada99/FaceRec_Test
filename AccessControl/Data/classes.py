@@ -1,11 +1,11 @@
 import os
 from datetime import datetime, timedelta
-from enum import Enum
 from decouple import config
 
 import sqlalchemy
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy_serializer import SerializerMixin
+import AccessControl.Data.enums as enums
 
 # setting up parameters
 _user = config('DB_USER')
@@ -22,32 +22,6 @@ engine = sqlalchemy.create_engine(
 # getting base for classes
 Base = declarative_base()
 
-class PictureClassification(Enum):
-    ALL_ACTIVE = 0
-    EMPLOYEES_ACTIVE = 1
-    ACCEPTED_APPOINTMENTS = 2
-
-class PersonRole(Enum):
-    PERSON = 0
-    EMPLOYEE = 1
-    ADMIN = 2
-    SUPER_ADMIN = 3
-
-class AppointmentStatus(Enum):
-    PENDING = 0
-    ACCEPTED = 1
-    REJECTED = 2
-    ONGOING = 3
-    FINALIZED = 4
-    RUNNING_LATE = 5
-    NEVER_HAPPENED = 6
-
-class VaccineLab(Enum):
-    PFIZER = 0
-    SINOVAC = 1
-    ASTRAZENECA = 2
-    SPUTNIK = 3
-
 # creating clases
 
 class Person(Base, SerializerMixin):
@@ -59,7 +33,7 @@ class Person(Base, SerializerMixin):
     last_name = sqlalchemy.Column(sqlalchemy.String(length=30))
     birth_date = sqlalchemy.Column(sqlalchemy.Date)
     email = sqlalchemy.Column(sqlalchemy.String(length=30))
-    role = sqlalchemy.Column(sqlalchemy.Enum(PersonRole))
+    role = sqlalchemy.Column(sqlalchemy.Enum(enums.PersonRole))
     active = sqlalchemy.Column(sqlalchemy.Boolean, default=True)
 
     employee = sqlalchemy.orm.relationship(
@@ -115,7 +89,7 @@ class Vaccine(Base, SerializerMixin):
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
     person_id = sqlalchemy.Column(
         sqlalchemy.Integer, sqlalchemy.ForeignKey('persons.id'))
-    dose_lab = sqlalchemy.Column(sqlalchemy.Enum(VaccineLab))
+    dose_lab = sqlalchemy.Column(sqlalchemy.Enum(enums.VaccineLab))
     lot_num = sqlalchemy.Column(sqlalchemy.String(length=20))
     dose_date = sqlalchemy.Column(sqlalchemy.Date)
 
@@ -150,7 +124,7 @@ class Appointment(Base, SerializerMixin):
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
     start = sqlalchemy.Column(sqlalchemy.DateTime)
     end = sqlalchemy.Column(sqlalchemy.DateTime)
-    status = sqlalchemy.Column(sqlalchemy.Enum(AppointmentStatus), default=AppointmentStatus.PENDING)
+    status = sqlalchemy.Column(sqlalchemy.Enum(enums.AppointmentStatus), default=enums.AppointmentStatus.PENDING)
 
     person_id = sqlalchemy.Column(
         sqlalchemy.Integer, sqlalchemy.ForeignKey('persons.id'))

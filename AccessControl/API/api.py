@@ -23,6 +23,8 @@ import AccessControl.Data.classes as classes
 import AccessControl.Data.crud as crud
 import AccessControl.Data.data_manipulation as dm
 import AccessControl.Functions.matrix_functions as mx
+import AccessControl.Data.enums as enums
+
 
 ACCESS_EXPIRES = timedelta(hours=1)
 _secret = config('SECRET')
@@ -92,7 +94,7 @@ def _generate_person_picture_vaccines(data):
         except ValueError:
             lab_num = -1
 
-        dose_lab = classes.VaccineLab(lab_num) if lab_num > -1 else ""
+        dose_lab = enums.VaccineLab(lab_num) if lab_num > -1 else ""
         dose_date = data.get(f'dose_date_{i}')
         lot_num = data.get(f'lot_num_{i}')
         if dose_lab and dose_date and lot_num:
@@ -162,11 +164,14 @@ def appointment_by_id(id):
         json_data['picture'] = pic
         json_data['person_info'] = flatten(appointment.person.to_dict(
             only=('identification_document', 'first_name', 'last_name', 'email')))
+
         vaccines = crud.vaccines_by_person(appointment.person)
+
         json_data['vaccines'] = [flatten(vaccine.to_dict(
             only=('dose_lab', 'dose_date', 'lot_num'))) for vaccine in vaccines]
         for vac in json_data['vaccines']:
-            vac['dose_lab'] = classes.VaccineLab(int(vac["dose_lab"])).name
+            vac['dose_lab'] = enums.VaccineLab(int(vac["dose_lab"])).name
+
         msg = ''
         status = HTTPStatus.OK
     else:
@@ -182,11 +187,11 @@ def set_appointment_status():
     status = HTTPStatus.BAD_REQUEST
     if data:
         appointment = crud.get_entry(classes.Appointment, int(data['id']))
-        appointment_status = classes.AppointmentStatus(int(data['status']))
+        appointment_status = enums.AppointmentStatus(int(data['status']))
 
         if appointment:
             appointment.status = appointment_status
-            if appointment_status == classes.AppointmentStatus.FINALIZED:
+            if appointment_status == enums.AppointmentStatus.FINALIZED:
                 appointment.appointment_end = datetime.now()
             crud.commit()
             msg = 'Status set successfully'
@@ -210,9 +215,10 @@ def person_by_ident_doc():
             json_data.append(flatten(person.to_dict(
                 only=('id', 'first_name', 'last_name', 'identification_document', 'birth_date',))))
             vaccines = crud.vaccines_by_person(person)
+
             for vaccine in vaccines:
                 vac = flatten(vaccine.to_dict(only=('dose_lab', 'dose_date', 'lot_num')))
-                vac['dose_lab'] = classes.VaccineLab(int(vac["dose_lab"])).name
+                vac['dose_lab'] = enums.VaccineLab(int(vac["dose_lab"])).name
                 json_data.append(vac)
 
         return jsonify(json_data)
@@ -244,7 +250,7 @@ def person_by_id(id):
         json_data['vaccines'] = [flatten(vaccine.to_dict(
             only=('dose_lab', 'dose_date', 'lot_num'))) for vaccine in vaccines]
         for vac in json_data['vaccines']:
-            vac['dose_lab'] = classes.VaccineLab(int(vac["dose_lab"])).name
+            vac['dose_lab'] = enums.VaccineLab(int(vac["dose_lab"])).name
         msg = ''
         status = HTTPStatus.OK
     else:
@@ -289,7 +295,7 @@ def employee_methods(id):
             json_data['vaccines'] = [flatten(vaccine.to_dict(
                 only=('dose_lab', 'dose_date', 'lot_num'))) for vaccine in vaccines]
             for vac in json_data['vaccines']:
-                vac['dose_lab'] = classes.VaccineLab(int(vac["dose_lab"])).name
+                vac['dose_lab'] = enums.VaccineLab(int(vac["dose_lab"])).name
             comments = crud.comments_by_employee(employee)
             json_data['comments'] = [flatten(comment.to_dict(
                 only=('timestamp', 'text'))) for comment in comments]
@@ -315,7 +321,7 @@ def auth_employee_info():
         json_data['vaccines'] = [flatten(vaccine.to_dict(
             only=('dose_lab', 'dose_date', 'lot_num'))) for vaccine in vaccines]
         for vac in json_data['vaccines']:
-            vac['dose_lab'] = classes.VaccineLab(int(vac["dose_lab"])).name
+            vac['dose_lab'] = enums.VaccineLab(int(vac["dose_lab"])).name
         comments = crud.comments_by_employee(employee)
 
         json_data['comments'] = [flatten(comment.to_dict(
@@ -345,7 +351,7 @@ def regist_employees():
             error = True
 
         if not error:
-            person.role = classes.PersonRole(int(data['role']))
+            person.role = enums.PersonRole(int(data['role']))
             # Employee data
             position = data['position']
             start_date = data['start_date']
@@ -429,7 +435,7 @@ def make_appointment():
     if data:
         person, picture, vaccine_list, _ = _generate_person_picture_vaccines(data)
 
-        person.role = classes.PersonRole.PERSON
+        person.role = enums.PersonRole.PERSON
         employee_id = int(data['employee_id'])
         employee = crud.get_entry(classes.Employee, employee_id)
 
@@ -581,7 +587,7 @@ def add_vaccine():
         except ValueError:
             lab_num = -1
 
-        dose_lab = classes.VaccineLab(lab_num) if lab_num > -1 else ""
+        dose_lab = enums.VaccineLab(lab_num) if lab_num > -1 else ""
         dose_date = data['dose_date']
         lot_num = data['lot_num']
 
