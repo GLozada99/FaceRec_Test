@@ -3,7 +3,9 @@ import sys
 import face_recognition as fr
 import numpy as np
 import AccessControl.Data.crud as crud
+import AccessControl.Data.enums as enums
 import AccessControl.Data.classes as classes
+
 from PIL import Image
 from numpy_serializer import to_bytes, from_bytes
 import base64
@@ -145,11 +147,11 @@ def get_pictures_encodings_by_type(type):
     Returns list of tuples in the format (person_id, face_encoding, pic_id)
     '''
     pics = None
-    if type == classes.PictureClassification.ALL_ACTIVE:
+    if type == enums.PictureClassification.ALL_ACTIVE:
         pics = crud.get_all_pictures()
-    elif type == classes.PictureClassification.EMPLOYEES_ACTIVE:
+    elif type == enums.PictureClassification.EMPLOYEES_ACTIVE:
         pics = crud.get_employees_pictures()
-    elif type == classes.PictureClassification.APPOINTMENTS_ACCEPTED:
+    elif type == enums.PictureClassification.APPOINTMENTS_ACCEPTED:
         pics = crud.get_accepted_appointments_pictures()
 
     pic_list = []

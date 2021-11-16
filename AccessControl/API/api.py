@@ -536,22 +536,21 @@ def login():
 @app.route('/open-door', methods=['GET'])  # Done
 @jwt_required()
 async def openDoor():
-    time_out = 3
+    time_out = 7
+
+    server = config('MATRIX_SERVER')
+    user = config('MATRIX_USER')
+    password = config('MATRIX_PASSWORD')
+    device_id = config('MATRIX_DEVICE_ID_BACKEND')
+    door_room_name = config('MATRIX_ROOM_NAME_DOOR')
     try:
-        server = config('MATRIX_SERVER')
-        user = config('MATRIX_USER')
-        password = config('MATRIX_PASSWORD')
-        device_id = config('MATRIX_DEVICE_ID')
-        door_room_name = config('MATRIX_ROOM_NAME_DOOR')
-
-        client = await asyncio.wait_for(mx.matrix_login(server, user, password, device_id), 5)
-        door_room_id = await asyncio.wait_for(mx.matrix_get_room_id(client, door_room_name), 5)
-
+        client = await asyncio.wait_for(mx.matrix_login(server, user, password, device_id), time_out)
+        door_room_id = await asyncio.wait_for(mx.matrix_get_room_id(client, door_room_name), time_out)
         message = '1'
-        await asyncio.wait_for(mx.matrix_send_message(client, door_room_id, message), 5)
+        await asyncio.wait_for(mx.matrix_send_message(client, door_room_id, message), time_out)
         msg = 'Door oppened correctly'
         code = HTTPStatus.OK
-        await asyncio.wait_for(mx.matrix_logout_close(client), 5)
+        await asyncio.wait_for(mx.matrix_logout_close(client), time_out)
     except asyncio.TimeoutError:
         msg = 'Error opening door'
         code = HTTPStatus.SERVICE_UNAVAILABLE

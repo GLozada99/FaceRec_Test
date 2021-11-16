@@ -1,4 +1,5 @@
 import AccessControl.Data.classes as classes
+import AccessControl.Data.enums as enums
 import sqlalchemy
 import time
 
@@ -114,7 +115,7 @@ def get_persons():
     Returns all persons who are not employees
     '''
     return (_session.query(classes.Person).
-            filter(classes.Person.role == classes.PersonRole.PERSON).filter(classes.Person.active).all())
+            filter(classes.Person.role == enums.PersonRole.PERSON).filter(classes.Person.active).all())
 
 def person_by_ident_doc(identification_document):
     return _session.query(classes.Person).filter_by(identification_document=identification_document).all()
@@ -134,7 +135,7 @@ def get_all_pictures():
 
 def get_employees_pictures():
     return (_session.query(classes.Picture).join(classes.Picture.person).
-            filter(classes.Person.role >= classes.PersonRole.PERSON).filter(classes.Person.active).all())
+            filter(classes.Person.role >= enums.PersonRole.PERSON).filter(classes.Person.active).all())
 
 def get_accepted_appointments_pictures():
     return (_session.query(classes.Picture).join(classes.Picture.person).

@@ -5,7 +5,9 @@ import numpy as np
 import face_recognition
 from cv2 import cv2
 from PIL import Image
+from decouple import config
 import AccessControl.Data.crud as crud
+import AccessControl.Data.enums as enums
 import AccessControl.Data.classes as classes
 import AccessControl.Data.data_manipulation as dm
 import AccessControl.Functions.matrix_functions as mx
@@ -193,10 +195,10 @@ def face_recog_file(picture_path, show_pictures=False):
             show_pic_from_array(picture_array)
 
 
-async def face_recog_live(faceNet, maskNet, camera_address=0):
+async def face_recog_live(faceNet, maskNet, camera_address):
 
     # pics = dm.get_pictures_encodings()
-    pics = dm.get_pictures_encodings_by_type(classes.PictureClassification.ALL_ACTIVE)
+    pics = dm.get_pictures_encodings_by_type(enums.PictureClassification.ALL_ACTIVE)
     
     # list of tuples (person_id, face_enconding)
     person_ids = []
@@ -233,16 +235,18 @@ async def face_recog_live(faceNet, maskNet, camera_address=0):
 
     video_capture = cv2.VideoCapture(camera_address)  # starting camera
 
-    server = 'https://matrix-client.matrix.org'
-    user = '@tavo9:matrix.org'
-    password = 'O1KhpTBn7D47'
-    device_id = 'LYTVJFQRJG'
-    temper_room_name = '#temper:matrix.org'
-    speaker_room_name = '#speaker:matrix.org'
+    server = config('MATRIX_SERVER')
+    user = config('MATRIX_USER')
+    password = config('MATRIX_PASSWORD')
+    device_id = config('MATRIX_DEVICE_ID_FACERECOG')
+    temper_room_name = config('MATRIX_ROOM_NAME_TEMPERATURE')
+    speaker_room_name = config('MATRIX_ROOM_NAME_SPEAKER')
+    door_room_name = config('MATRIX_ROOM_NAME_DOOR')
 
     client = await mx.matrix_login(server, user, password, device_id)
     temper_room_id = await mx.matrix_get_room_id(client, temper_room_name)
     speaker_room_id = await mx.matrix_get_room_id(client, speaker_room_name)
+    door_room_id = await mx.matrix_get_room_id(client, door_room_name)
 
     mask_detection_flag = False  # indicates a mask has been detected
     face_recognition_flag = False  # indicates a face has been recognized
@@ -368,6 +372,8 @@ async def face_recog_live(faceNet, maskNet, camera_address=0):
                 print('Bienvenido')
                 messages.append('5Welcome')
                 dm.insert_picture_discovered(p_id, rgb_frame, unknown_face_encoding)
+                await asyncio.sleep(3)
+                await mx.matrix_send_message(client, door_room_id, '1')
                 # open door
     # if message_task is not None:
     #     await message_task
