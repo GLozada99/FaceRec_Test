@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import argparse
-
+from decouple import config
 import AccessControl.Functions.functions as func
 import AccessControl.Data.data_manipulation as dm
 from cv2 import cv2
@@ -25,6 +25,8 @@ def main():
     ap.add_argument('--add-picture-file', action='store')
     ap.add_argument('--add-picture-directory', action='store')
     ap.add_argument('--face-recog-live', action='store_true')
+    ap.add_argument('--in', action='store_true')
+    ap.add_argument('--out', action='store_true')
     ap.add_argument('--face-recog-file', action='store')
     ap.add_argument('--show-pictures-database', action='store_true')
 
@@ -41,12 +43,21 @@ def main():
         # load the face mask detector model from disk
         maskNet = load_model(os.path.abspath(args["model"]))
 
-        # IP_camera_address = 'rtsp://gustavo:123456789Gu@10.0.0.121:554/Streaming/Channels/102'
-        IP_camera_address = 'rtsp://gustavo:123456789Gu@sawr.ddns.net:2001/Streaming/Channels/102'
+        camera_user = ''
+
+        if args['in']:
+            camera_ip = config('CAMERA_IN_IP')
+            camera_user = config('CAMERA_IN_USER')
+            camera_password = config('CAMERA_IN_PASSWORD')
+        elif args['out']:
+            camera_ip = config('CAMERA_OUT_IP')
+            camera_user = config('CAMERA_OUT_USER')
+            camera_password = config('CAMERA_OUT_PASSWORD')
+
+        IP_camera_address = ((f'rtsp://{camera_user}:{camera_password}@{camera_ip}:\
+                             554/Streaming/Channels/102') if camera_user else 0)
 
         asyncio.run(func.face_recog_live(faceNet, maskNet, IP_camera_address))
-        # asyncio.run(func.face_recog_live(faceNet, maskNet))
-
     elif args['add_picture_directory']:
         dm.insert_picture_directory(args['add_picture_directory'])
     elif args['face_recog_file']:
