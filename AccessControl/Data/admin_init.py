@@ -3,6 +3,7 @@ import sys
 import AccessControl.Data.crud as crud
 import AccessControl.Data.data_manipulation as dm
 import AccessControl.Data.classes as classes
+import AccessControl.Data.enums as enums
 
 from AccessControl.API.api import _generate_person_picture_vaccines
 
@@ -17,7 +18,7 @@ def admin_init():
         reader = csv.DictReader(file)
         for row in reader:
             person, picture, vaccine_list, _ = _generate_person_picture_vaccines(row)
-            person.role = classes.PersonRole(int(row['role']))
+            person.role = enums.PersonRole(int(row['role']))
 
             # Employee data
             position = row['position']
