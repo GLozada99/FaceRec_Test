@@ -27,7 +27,7 @@ import AccessControl.Data.enums as enums
 
 
 ACCESS_EXPIRES = timedelta(hours=1)
-_secret = config('SECRET')
+_secret = config('FLASK_SECRET')
 
 app = Flask(__name__)
 jwt = JWTManager(app)
