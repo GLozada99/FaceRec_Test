@@ -9,3 +9,6 @@ Para utilizar el proyecto y acceder a los módulos propios creados de manera ade
 
 CMake debe estar instalado para hacerle el build a dlib, que es un módulo que utiliza face_recognition
 
+La base de datos en Postgres debe tener un datestyle DMY. Ej:
+SET datestyle = GERMAN, DMY;
+
