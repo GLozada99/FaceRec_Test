@@ -7,3 +7,5 @@ Para utilizar el proyecto y acceder a los módulos propios creados de manera ade
 3. pip install -r AccessControl/requirements.txt
 4. pip install -e .
 
+CMake debe estar instalado para hacerle el build a dlib, que es un módulo que utiliza face_recognition
+
