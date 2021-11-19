@@ -49,13 +49,15 @@ def main():
             camera_ip = config('CAMERA_IN_IP')
             camera_user = config('CAMERA_IN_USER')
             camera_password = config('CAMERA_IN_PASSWORD')
+            end = 'h264Preview_01_main'
         elif args['out']:
             camera_ip = config('CAMERA_OUT_IP')
             camera_user = config('CAMERA_OUT_USER')
-            camera_password = config('CAMERA_OUT_PASSWORD')
+            camera_password = config('CAMERA_OUT_PASSWORD', default='')
+            end = 'Streaming/Channels/102'
 
         IP_camera_address = ((f'rtsp://{camera_user}:{camera_password}@{camera_ip}:\
-                             554/Streaming/Channels/102') if camera_user else 0)
+                             554/{end}') if camera_user else 0)
 
         asyncio.run(func.face_recog_live(faceNet, maskNet, IP_camera_address))
     elif args['add_picture_directory']:
