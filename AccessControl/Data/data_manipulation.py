@@ -34,6 +34,7 @@ def process_picture_path(path: str, large: bool = False):
         data = (person_id, raw_bin_pic, face_encoding)
     return data
 
+
 def process_picture_file(img_data, large: bool = False):
     '''
     Given image, takes the face, and encodes it into bytes for storing.
@@ -50,6 +51,7 @@ def process_picture_file(img_data, large: bool = False):
         data = (raw_bin_pic, face_encoding)
     return data
 
+
 def unprocess_picture(coded_data):
     '''
     Decodes data, works for pictures and face encodings
@@ -57,11 +59,13 @@ def unprocess_picture(coded_data):
     decoded_data = from_bytes(coded_data)
     return decoded_data
 
+
 def image_to_byte_array(image):
     imgByteArr = io.BytesIO()
     image.save(imgByteArr, format="png")
     imgByteArr = imgByteArr.getvalue()
     return imgByteArr
+
 
 def img_bytes_to_base64(img_bytes):
     img_array = unprocess_picture(img_bytes)
@@ -72,6 +76,7 @@ def img_bytes_to_base64(img_bytes):
     bytes_img = img_in_mem.read()
     img_b64 = base64.b64encode(bytes_img).decode('ascii')
     return img_b64
+
 
 def insert_picture_directory(path: str):
     '''
@@ -93,6 +98,7 @@ def insert_picture_directory(path: str):
             else:
                 print(f'No hay una persona registrada con el id {person_id}')
 
+
 def insert_picture_file(path: str):
     '''
     Inserts single picture into database, given it's path
@@ -112,7 +118,8 @@ def insert_picture_file(path: str):
         print(f'No hay una persona registrada con el id {person_id}')
         sys.exit(1)
 
-def insert_picture_discovered(person_id, picture_frame, face_encoding):
+
+def insert_picture_discovered(person_id, picture_frame, face_encoding, action):
     '''
     Inserts single picture into database. Used for frames taken live.
     Both the the picture_frame and the face_encoding must be arrays
@@ -124,10 +131,11 @@ def insert_picture_discovered(person_id, picture_frame, face_encoding):
     newPicture = classes.Picture(picture_bytes=picture_bytes,
                                  face_bytes=face_bytes, person=person)
     newTimeEntry = classes.Time_Entry(
-        action="Entrada", action_time=datetime.now(), picture=newPicture, person=person)
+        action=action, action_time=datetime.now(), picture=newPicture, person=person)
 
     crud.add_entry(newPicture)
     crud.add_entry(newTimeEntry)
+
 
 def get_pictures_encodings():
     '''
@@ -142,6 +150,7 @@ def get_pictures_encodings():
 
     return pic_list
 
+
 def get_pictures_encodings_by_type(type):
     '''
     Returns list of tuples in the format (person_id, face_encoding, pic_id)
@@ -151,7 +160,7 @@ def get_pictures_encodings_by_type(type):
         pics = crud.get_all_pictures()
     elif type == enums.PictureClassification.EMPLOYEES_ACTIVE:
         pics = crud.get_employees_pictures()
-    elif type == enums.PictureClassification.APPOINTMENTS_ACCEPTED:
+    elif type == enums.PictureClassification.ACCEPTED_APPOINTMENTS:
         pics = crud.get_accepted_appointments_pictures()
 
     pic_list = []
@@ -163,6 +172,7 @@ def get_pictures_encodings_by_type(type):
 
     return pic_list
 
+
 def get_pictures():
     pics = []
     for pic in crud.get_entries(classes.Picture):
@@ -171,9 +181,11 @@ def get_pictures():
 
     return pics
 
+
 def compute_hash(raw_string: str):
     sha_signature = hashlib.sha256(raw_string.encode()).hexdigest()
     return sha_signature
+
 
 def compare_hash(raw_string: str, hash_string: str):
     result = compute_hash(raw_string) == hash_string

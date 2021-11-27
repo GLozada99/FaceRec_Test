@@ -1,9 +1,7 @@
-import argparse
 import asyncio
 import base64
 import csv
 import io
-import os
 import re
 import sys
 from decouple import config
@@ -16,8 +14,6 @@ from flask_cors import CORS
 from flask_jwt_extended import (JWTManager, create_access_token,
                                 get_jwt_identity, jwt_required)
 from flatten_json import flatten
-from icecream import ic
-from psycopg2.errorcodes import INVALID_TEXT_REPRESENTATION
 
 import AccessControl.Data.classes as classes
 import AccessControl.Data.crud as crud
@@ -34,6 +30,7 @@ jwt = JWTManager(app)
 app.config['JWT_SECRET_KEY'] = _secret
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = ACCESS_EXPIRES
 CORS(app)
+
 
 def _generate_person_picture_vaccines(data):
     # Person data
@@ -103,6 +100,7 @@ def _generate_person_picture_vaccines(data):
             vaccine_list.append(vaccine)
     return (person, picture, vaccine_list, existent)
 
+
 @app.route('/persons', methods=['GET'])  # Done
 @jwt_required()
 def list_persons():
@@ -115,6 +113,7 @@ def list_persons():
                   'identification_document', 'birth_date', 'email')))
     msg = '' if len(json_data) else 'No entries'
     return jsonify(result=json_data, msg=msg), HTTPStatus.OK
+
 
 @app.route('/employees', methods=['GET'])
 def list_employees():
@@ -134,6 +133,7 @@ def list_employees():
 
     return jsonify(result=json_data, msg=msg), HTTPStatus.OK
 
+
 @app.route('/appointments', methods=['GET'])
 def list_appointments():
     '''Returns all appointments'''
@@ -151,6 +151,7 @@ def list_appointments():
     msg = '' if len(json_data) else 'No entries'
 
     return jsonify(result=json_data, msg=msg), HTTPStatus.OK
+
 
 @app.route('/appointment/<id>', methods=['GET'])
 def appointment_by_id(id):
@@ -178,6 +179,7 @@ def appointment_by_id(id):
         msg = 'No entry with this ID'
         status = HTTPStatus.BAD_REQUEST
     return jsonify(result=json_data, msg=msg), status
+
 
 @app.route('/appointment-status', methods=['PUT'])
 def set_appointment_status():
@@ -217,11 +219,13 @@ def person_by_ident_doc():
             vaccines = crud.vaccines_by_person(person)
 
             for vaccine in vaccines:
-                vac = flatten(vaccine.to_dict(only=('dose_lab', 'dose_date', 'lot_num')))
+                vac = flatten(vaccine.to_dict(
+                    only=('dose_lab', 'dose_date', 'lot_num')))
                 vac['dose_lab'] = enums.VaccineLab(int(vac["dose_lab"])).name
                 json_data.append(vac)
 
         return jsonify(json_data)
+
 
 @app.route('/entries', methods=['GET'])  # Done
 @jwt_required()
@@ -235,6 +239,7 @@ def list_time_entries():
                   ))))
     msg = '' if len(json_data) else 'No entries'
     return jsonify(result=json_data, msg=msg), HTTPStatus.OK
+
 
 @app.route('/person/<id>', methods=['GET'])  # Done
 @jwt_required()
@@ -258,6 +263,7 @@ def person_by_id(id):
         status = HTTPStatus.BAD_REQUEST
     return jsonify(person=json_data, msg=msg), status
 
+
 @app.route('/pictureEntry/<id>', methods=['GET'])  # Done
 @jwt_required()
 def entry_by_id(id):
@@ -274,6 +280,7 @@ def entry_by_id(id):
         status = HTTPStatus.BAD_REQUEST
 
     return jsonify(picture=pic, msg=msg), status
+
 
 @app.route('/employee/<id>', methods=['GET', 'DELETE'])  # Done
 @jwt_required()
@@ -304,6 +311,7 @@ def employee_methods(id):
         crud.delete_entry(classes.Person, int(id))
         return jsonify(msg='Employee deleted successfully'), HTTPStatus.OK
 
+
 @app.route('/currentEmployee', methods=['GET'])  # Done
 @jwt_required()
 def auth_employee_info():
@@ -333,6 +341,7 @@ def auth_employee_info():
 
     return jsonify(result=json_data), HTTPStatus.OK
 
+
 @app.route('/employee', methods=['POST'])
 @jwt_required()
 def regist_employees():
@@ -344,7 +353,8 @@ def regist_employees():
     status = HTTPStatus.BAD_REQUEST
     if data:
         try:
-            person, picture, vaccine_list, existent = _generate_person_picture_vaccines(data)
+            person, picture, vaccine_list, existent = _generate_person_picture_vaccines(
+                data)
         except ValueError as e:
             msg = str(e)
             status = HTTPStatus.NOT_ACCEPTABLE
@@ -358,7 +368,8 @@ def regist_employees():
             password = data.get('password', '')
             password = dm.compute_hash(password) if password else password
             if existent:
-                employee = crud.get_entry(classes.Employee, person.id, inactive=True)
+                employee = crud.get_entry(
+                    classes.Employee, person.id, inactive=True)
                 employee.position = position
                 employee.start_date = start_date
                 employee.password = password
@@ -382,6 +393,7 @@ def regist_employees():
                 msg = 'No correct picture'
 
     return jsonify(msg=msg), status
+
 
 @app.route('/bulk', methods=['POST'])
 @jwt_required()
@@ -424,6 +436,7 @@ def regist_bulk():
 
         return jsonify(msg=msg), status
 
+
 @app.route('/appointment', methods=['POST'])
 def make_appointment():
     '''
@@ -433,7 +446,8 @@ def make_appointment():
     data = request.get_json(force=True)
     msg = 'No correct data'
     if data:
-        person, picture, vaccine_list, _ = _generate_person_picture_vaccines(data)
+        person, picture, vaccine_list, _ = _generate_person_picture_vaccines(
+            data)
 
         person.role = enums.PersonRole.PERSON
         employee_id = int(data['employee_id'])
@@ -459,6 +473,7 @@ def make_appointment():
             msg = 'No correct picture'
 
     return jsonify(msg=msg), 406
+
 
 @app.route('/newPassword', methods=['PUT'])  # Done
 def set_first_password():
@@ -504,6 +519,7 @@ def set_first_password():
 
     return jsonify(msg=msg), status
 
+
 @app.route('/login', methods=['POST'])  # Done
 def login():
     data = request.get_json(force=True)
@@ -518,7 +534,8 @@ def login():
             employee = None
 
         access_token = ''
-        msg = 'Bad username or password'  # if there is no employee or the password is wrong, this will be the msg
+        # if there is no employee or the password is wrong, this will be the msg
+        msg = 'Bad username or password'
         status = HTTPStatus.BAD_REQUEST
 
         if employee:
@@ -533,15 +550,16 @@ def login():
 
     return jsonify(msg=msg, access_token=access_token), status
 
+
 @app.route('/open-door', methods=['GET'])  # Done
-@jwt_required()
+# @jwt_required()
 async def openDoor():
-    time_out = 7
+    time_out = 10
 
     server = config('MATRIX_SERVER')
     user = config('MATRIX_USER')
     password = config('MATRIX_PASSWORD')
-    device_id = config('MATRIX_DEVICE_ID_BACKEND')
+    device_id = config('MATRIX_DEVICE_ID_FACERECOG')
     door_room_name = config('MATRIX_ROOM_NAME_DOOR')
     try:
         client = await asyncio.wait_for(mx.matrix_login(server, user, password, device_id), time_out)
@@ -557,6 +575,7 @@ async def openDoor():
 
     return jsonify(msg=msg), code
 
+
 @app.route('/user', methods=['GET'])
 @jwt_required()
 def protected():
@@ -570,6 +589,7 @@ def protected():
         if user else ('', {'name': '', 'value': ''}, HTTPStatus.UNAUTHORIZED))
 
     return jsonify(result={'fullname': fullname, 'role': role, 'id': current_user_id}), status
+
 
 @app.route('/vaccine', methods=['POST'])
 @jwt_required()
@@ -600,6 +620,7 @@ def add_vaccine():
 
     return jsonify(msg=msg), status
 
+
 @app.route('/comment', methods=['POST'])
 @jwt_required()
 def add_comment():
@@ -612,13 +633,60 @@ def add_comment():
 
         commentText = data['commentText']
 
-        comment = classes.Comment(text=commentText, employee=employee, timestamp=datetime.now())
+        comment = classes.Comment(
+            text=commentText, employee=employee, timestamp=datetime.now())
         crud.add_entry(comment)
 
         msg = 'Comment Added Successfully'
         status = HTTPStatus.OK
 
     return jsonify(msg=msg), status
+
+
+@app.route('/set-config', methods=['PUT'])  # Done
+# @jwt_required()
+async def set_config():
+    time_out = 20
+
+    server = config('MATRIX_SERVER')
+    user = config('MATRIX_USER')
+    password = config('MATRIX_PASSWORD')
+    device_id = config('MATRIX_DEVICE_ID_BACKEND')
+    lang_room_name = config('MATRIX_ROOM_NAME_LANGUAGE')
+    profile_room_name = config('MATRIX_ROOM_NAME_PROFILE')
+
+    data = request.get_json(force=True)
+    msg = 'Incorrect Data'
+    status = HTTPStatus.BAD_REQUEST
+
+    if data:
+        language = enums.SpeakerLanguages(int(data['language'])).name
+        profile = enums.PictureClassification(int(data['profile'])).name
+        print(server, user, password, device_id,
+              lang_room_name, profile_room_name)
+        try:
+            client = await asyncio.wait_for(
+                mx.matrix_login(server, user, password, device_id), time_out)
+            print(client)
+
+            lang_room_id = await asyncio.wait_for(
+                mx.matrix_get_room_id(client, lang_room_name), time_out)
+            profile_room_id = await asyncio.wait_for(
+                mx.matrix_get_room_id(client, profile_room_name), time_out)
+
+            await asyncio.wait_for(
+                mx.matrix_send_message(client, lang_room_id, language), time_out)
+            await asyncio.wait_for(
+                mx.matrix_send_message(client, profile_room_id, profile), time_out)
+
+            await asyncio.wait_for(mx.matrix_logout_close(client), time_out)
+            msg = 'Configuration Set Succesfully'
+            code = HTTPStatus.OK
+        except asyncio.TimeoutError:
+            msg = 'Error Setting Configuration'
+            code = HTTPStatus.SERVICE_UNAVAILABLE
+
+    return jsonify(msg=msg), code
 
 
 if __name__ == '__main__':

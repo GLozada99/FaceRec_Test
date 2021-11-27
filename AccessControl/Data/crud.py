@@ -45,7 +45,8 @@ def get_entry(Class, id: int, inactive=False):
         if not entry.active:
             entry = None
     elif Class == classes.Employee:  # Not proud
-        entry = entry if _session.query(classes.Person).get(id).active or inactive else None
+        entry = entry if _session.query(classes.Person).get(
+            id).active or inactive else None
 
     return entry
 
@@ -62,7 +63,8 @@ def get_entries(Class):
     elif Class == classes.Employee:  # this elif is awful, but I was desperate
         person_entries = _session.query(classes.Person).filter_by(active=True)
         person_ids = [person.id for person in person_entries]
-        entries = [employee for employee in _session.query(Class).all() if employee.id in person_ids]
+        entries = [employee for employee in _session.query(
+            Class).all() if employee.id in person_ids]
     else:
         entries = _session.query(Class).all()
 
@@ -105,10 +107,12 @@ def reactivate_entry(Class, id: int):
 def commit():
     _session.commit()
 
+
 def update_entry_with_entry(Class, source, destination):
     # not very sure about this one...
     destination.__dict__.update(source.__dict__)
     _session.commit()
+
 
 def get_persons():
     '''
@@ -117,27 +121,33 @@ def get_persons():
     return (_session.query(classes.Person).
             filter(classes.Person.role == enums.PersonRole.PERSON).filter(classes.Person.active).all())
 
+
 def person_by_ident_doc(identification_document):
     return _session.query(classes.Person).filter_by(identification_document=identification_document).all()
+
 
 def vaccines_by_person(person):
     return _session.query(classes.Vaccine).filter_by(person_id=person.id).all()
 
+
 def comments_by_employee(employee):
     return reversed(_session.query(classes.Comment).filter_by(employee_id=employee.id).all())
 
+
 def pictures_by_person(person):
     return _session.query(classes.Picture).filter_by(person_id=person.id).all()
+
 
 def get_all_pictures():
     return (_session.query(classes.Picture).join(classes.Picture.person).
             filter(classes.Person.active).all())
 
+
 def get_employees_pictures():
     return (_session.query(classes.Picture).join(classes.Picture.person).
             filter(classes.Person.role >= enums.PersonRole.PERSON).filter(classes.Person.active).all())
 
+
 def get_accepted_appointments_pictures():
-    return (_session.query(classes.Picture).join(classes.Picture.person).
-            join(classes.Appointment.person).filter(classes.Appointment.accepted).
-            filter(classes.Person.active).all())
+    return (_session.query(classes.Person).join(classes.Person.pictures).
+            join(classes.Person.appointments).filter(classes.Appointment.status == enums.AppointmentStatus.ACCEPTED).all())

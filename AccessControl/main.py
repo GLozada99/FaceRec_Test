@@ -44,22 +44,28 @@ def main():
         maskNet = load_model(os.path.abspath(args["model"]))
 
         camera_user = ''
-
+        ask_mask = True
+        ask_temp = True
+        action = 'Exit'
         if args['in']:
             camera_ip = config('CAMERA_IN_IP')
             camera_user = config('CAMERA_IN_USER')
             camera_password = config('CAMERA_IN_PASSWORD')
-            end = 'h264Preview_01_main'
+            end = 'h264Preview_01_sub'
+            ask_mask = False
+            ask_temp = False
         elif args['out']:
             camera_ip = config('CAMERA_OUT_IP')
             camera_user = config('CAMERA_OUT_USER')
             camera_password = config('CAMERA_OUT_PASSWORD', default='')
             end = 'Streaming/Channels/102'
+            action = 'Entry'
 
         IP_camera_address = ((f'rtsp://{camera_user}:{camera_password}@{camera_ip}:\
                              554/{end}') if camera_user else 0)
 
-        asyncio.run(func.face_recog_live(faceNet, maskNet, IP_camera_address))
+        asyncio.run(func.face_recog_live(faceNet, maskNet,
+                    IP_camera_address, ask_mask, ask_temp, action))
     elif args['add_picture_directory']:
         dm.insert_picture_directory(args['add_picture_directory'])
     elif args['face_recog_file']:
