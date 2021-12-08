@@ -264,7 +264,7 @@ async def face_recog_live(faceNet, maskNet, camera_address, ask_mask, ask_temp, 
     for person_id, encoding, _ in pics:
         person_ids.append(person_id)
         encodings.append(encoding)
-
+    print(person_ids)
     while True:
         _, frame = video_capture.read()  # getting frame
         cv2.imshow('Video', frame)  # showing video

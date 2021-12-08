@@ -151,21 +151,22 @@ def get_pictures_encodings():
     return pic_list
 
 
-def get_pictures_encodings_by_type(type):
+def get_pictures_encodings_by_type(profile):
     '''
     Returns list of tuples in the format (person_id, face_encoding, pic_id)
     '''
     pics = None
-    if type == enums.PictureClassification.ALL_ACTIVE:
+    if profile == enums.PictureClassification.ALL_ACTIVE:
         pics = crud.get_all_pictures()
-    elif type == enums.PictureClassification.EMPLOYEES_ACTIVE:
+    elif profile == enums.PictureClassification.EMPLOYEES_ACTIVE:
         pics = crud.get_employees_pictures()
-    elif type == enums.PictureClassification.ACCEPTED_APPOINTMENTS:
+    elif profile == enums.PictureClassification.ACCEPTED_APPOINTMENTS:
         pics = crud.get_accepted_appointments_pictures()
 
     pic_list = []
     for pic in pics:
-        person_id = pic.person_id
+        person_id = pic.person_id 
+        print(pic.person)
         pic_id = pic.id
         face_encodings = unprocess_picture(pic.face_bytes)
         pic_list.append((person_id, face_encodings, pic_id))

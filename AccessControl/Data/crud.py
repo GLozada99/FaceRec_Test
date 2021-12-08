@@ -149,5 +149,4 @@ def get_employees_pictures():
 
 
 def get_accepted_appointments_pictures():
-    return (_session.query(classes.Person).join(classes.Person.pictures).
-            join(classes.Person.appointments).filter(classes.Appointment.status == enums.AppointmentStatus.ACCEPTED).all())
+    return (_session.query(classes.Picture).join(classes.Person).join(classes.Appointment).filter(classes.Appointment.status == enums.AppointmentStatus.ACCEPTED).all())
