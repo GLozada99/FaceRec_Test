@@ -115,7 +115,7 @@ async def has_mask(frame, faceNet, maskNet):
 
 
 async def face_recog(frame, encodings):
-    tolerance = 0.6
+    tolerance = 0.5
     rgb_frame = frame[:, :, ::-1]
     face_locations = face_recognition.face_locations(rgb_frame)
     unknown_face_encondings = face_recognition.face_encodings(
