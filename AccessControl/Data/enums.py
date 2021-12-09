@@ -39,3 +39,4 @@ class SpeakerLanguages(Enum):
 class EntryTypes(Enum):
     ENTRY = 0
     EXIT = 1
+    PC = 2

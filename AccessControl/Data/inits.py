@@ -38,6 +38,12 @@ def admin_init():
 
 
 def camera_init():
+    camera = classes.Camera(
+        ip_address="0.0.0.0", user="admin", password="admin",
+        route="/", entry_type=enums.EntryTypes(2),
+        ask_mask=True, ask_temp=True)
+    crud.add_entry(camera)
+
     for i in range(2):
         ip = config(f'CAMERA_{i}_IP')
         user = config(f'CAMERA_{i}_USER')
