@@ -12,8 +12,7 @@ async def matrix_login(server, user, password, device_id=None):
 
 async def matrix_get_room_id(client, room_name):
     response = await client.room_resolve_alias(room_name)
-    room_id = response.room_id
-    return room_id
+    return response.room_id
 
 
 async def matrix_send_message(client, room_id, message):
