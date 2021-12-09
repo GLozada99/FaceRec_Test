@@ -46,7 +46,7 @@ class Person(Base, SerializerMixin):
     time_entries = sqlalchemy.orm.relationship(
         "Time_Entry", back_populates="person")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'Person... id: {self.id}, name: {self.first_name} {self.last_name}'
 
 
@@ -64,7 +64,7 @@ class Employee(Base, SerializerMixin):
     comments = sqlalchemy.orm.relationship(
         "Comment", back_populates="employee")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'Employee... id: {self.id}, name: {self.person.first_name} {self.person.last_name}'
 
 
@@ -83,7 +83,7 @@ class Picture(Base, SerializerMixin):
     time_entry = sqlalchemy.orm.relationship(
         "Time_Entry", back_populates="picture", uselist=False)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'Picture... id: {self.id}, person name: {self.person.first_name} {self.person.last_name}'
 
 
@@ -98,7 +98,7 @@ class Vaccine(Base, SerializerMixin):
 
     person = sqlalchemy.orm.relationship("Person", back_populates="vaccines")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'Vaccine... id: {self.id}, person name: {self.person.first_name} \
             lab: {self.dose_lab} date:{self.dose_date}'
 
@@ -119,7 +119,7 @@ class Time_Entry(Base, SerializerMixin):
     picture = sqlalchemy.orm.relationship(
         "Picture", back_populates="time_entry")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'Time Entry... id: {self.id}, person name: {self.person.first_name} \
             action: {self.action} time:{self.action_time}'
 
@@ -167,7 +167,8 @@ class Camera(Base, SerializerMixin):
     ask_temp = sqlalchemy.Column(sqlalchemy.Boolean, default=True)
 
     def connection_string(self):
-        return f'rtsp://{self.user}:{self.password}@{self.ip_address}:554{self.route}'
+        return (0 if self.ip_address == '0.0.0.0' else
+                f'rtsp://{self.user}:{self.password}@{self.ip_address}:554{self.route}')
 
 
 if __name__ == '__main__':
