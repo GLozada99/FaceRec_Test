@@ -202,4 +202,4 @@ def has_available_appointment(person_id):
             result = True
             break
 
-    return results
+    return result
