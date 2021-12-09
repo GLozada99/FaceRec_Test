@@ -445,34 +445,40 @@ def make_appointment():
     '''
     data = request.get_json(force=True)
     msg = 'No correct data'
+    status = HTTPStatus.BAD_REQUEST
     if data:
-        person, picture, vaccine_list, _ = _generate_person_picture_vaccines(
-            data)
+        try:
+            person, picture, vaccine_list, _ = _generate_person_picture_vaccines(
+                data)
 
-        person.role = enums.PersonRole.PERSON
-        employee_id = int(data['employee_id'])
-        employee = crud.get_entry(classes.Employee, employee_id)
+            person.role = enums.PersonRole.PERSON
+            employee_id = int(data['employee_id'])
+            employee = crud.get_entry(classes.Employee, employee_id)
 
-        # Appointment data
-        date = data['appointment_date']
-        time = data['appointment_time']
-        full_date = f'{date} {time}:00'
-        appointment_start = datetime.strptime(full_date, '%Y-%m-%d %H:%M:%S')
+            # Appointment data
+            date = data['appointment_date']
+            time = data['appointment_time']
+            full_date = f'{date} {time}:00'
+            appointment_start = datetime.strptime(
+                full_date, '%Y-%m-%d %H:%M:%S')
 
-        appointment = classes.Appointment(
-            start=appointment_start,
-            person=person, employee=employee)
+            appointment = classes.Appointment(
+                start=appointment_start,
+                person=person, employee=employee)
 
-        if picture:
-            crud.add_entry(appointment)
-            crud.add_entry(picture)
-            for vaccine in vaccine_list:
-                crud.add_entry(vaccine)
-            return jsonify(success=True), HTTPStatus.OK
-        else:
-            msg = 'No correct picture'
+            if picture:
+                crud.add_entry(appointment)
+                crud.add_entry(picture)
+                for vaccine in vaccine_list:
+                    crud.add_entry(vaccine)
+                mgs = 'Appointment set successfully'
+                status = HTTPStatus.OK
+            else:
+                msg = 'No correct picture'
+        except Exception as e:
+            msg = str(e)
 
-    return jsonify(msg=msg), 406
+    return jsonify(msg=msg), status
 
 
 @app.route('/newPassword', methods=['PUT'])  # Done
