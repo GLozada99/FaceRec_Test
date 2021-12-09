@@ -24,6 +24,7 @@ Base = declarative_base()
 
 # creating clases
 
+
 class Person(Base, SerializerMixin):
     __tablename__ = 'persons'
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
@@ -39,7 +40,8 @@ class Person(Base, SerializerMixin):
     employee = sqlalchemy.orm.relationship(
         "Employee", back_populates="person")
     pictures = sqlalchemy.orm.relationship("Picture", back_populates="person")
-    appointments = sqlalchemy.orm.relationship("Appointment", back_populates="person")
+    appointments = sqlalchemy.orm.relationship(
+        "Appointment", back_populates="person")
     vaccines = sqlalchemy.orm.relationship("Vaccine", back_populates="person")
     time_entries = sqlalchemy.orm.relationship(
         "Time_Entry", back_populates="person")
@@ -57,10 +59,11 @@ class Employee(Base, SerializerMixin):
     start_date = sqlalchemy.Column(sqlalchemy.Date)
 
     person = sqlalchemy.orm.relationship("Person", back_populates="employee")
-    appointments = sqlalchemy.orm.relationship("Appointment", back_populates="employee")
-    comments = sqlalchemy.orm.relationship("Comment", back_populates="employee")
+    appointments = sqlalchemy.orm.relationship(
+        "Appointment", back_populates="employee")
+    comments = sqlalchemy.orm.relationship(
+        "Comment", back_populates="employee")
 
-    # Sintomas y lo demas referente a enfermedades y/o covid pendiente
     def __str__(self):
         return f'Employee... id: {self.id}, name: {self.person.first_name} {self.person.last_name}'
 
@@ -99,6 +102,7 @@ class Vaccine(Base, SerializerMixin):
         return f'Vaccine... id: {self.id}, person name: {self.person.first_name} \
             lab: {self.dose_lab} date:{self.dose_date}'
 
+
 class Time_Entry(Base, SerializerMixin):
     __tablename__ = 'time_entries'
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
@@ -119,12 +123,14 @@ class Time_Entry(Base, SerializerMixin):
         return f'Time Entry... id: {self.id}, person name: {self.person.first_name} \
             action: {self.action} time:{self.action_time}'
 
+
 class Appointment(Base, SerializerMixin):
     __tablename__ = 'appointments'
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
     start = sqlalchemy.Column(sqlalchemy.DateTime)
     end = sqlalchemy.Column(sqlalchemy.DateTime)
-    status = sqlalchemy.Column(sqlalchemy.Enum(enums.AppointmentStatus), default=enums.AppointmentStatus.PENDING)
+    status = sqlalchemy.Column(sqlalchemy.Enum(
+        enums.AppointmentStatus), default=enums.AppointmentStatus.PENDING)
 
     person_id = sqlalchemy.Column(
         sqlalchemy.Integer, sqlalchemy.ForeignKey('persons.id'))
@@ -135,6 +141,7 @@ class Appointment(Base, SerializerMixin):
         "Person", back_populates="appointments")
     employee = sqlalchemy.orm.relationship(
         "Employee", back_populates="appointments")
+
 
 class Comment(Base, SerializerMixin):
     __tablename__ = 'comments'
@@ -148,10 +155,21 @@ class Comment(Base, SerializerMixin):
         "Employee", back_populates="comments")
 
 
+class Camera(Base, SerializerMixin):
+    __tablename__ = "cameras"
+    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
+    ip_address = sqlalchemy.Column(sqlalchemy.String(15))
+    user = sqlalchemy.Column(sqlalchemy.String(35))
+    password = sqlalchemy.Column(sqlalchemy.String(35))
+    route = sqlalchemy.Column(sqlalchemy.String(35))
+    entry_type = sqlalchemy.Column(sqlalchemy.Enum(enums.EntryTypes))
+
+
 if __name__ == '__main__':
     # when runned as file, it'll to create all clases as tables on the database
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
 
-    from AccessControl.Data.admin_init import admin_init
+    from AccessControl.Data.inits import admin_init, camera_init
     admin_init()
+    camera_init()
