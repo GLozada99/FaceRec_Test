@@ -163,6 +163,11 @@ class Camera(Base, SerializerMixin):
     password = sqlalchemy.Column(sqlalchemy.String(35))
     route = sqlalchemy.Column(sqlalchemy.String(35))
     entry_type = sqlalchemy.Column(sqlalchemy.Enum(enums.EntryTypes))
+    ask_mask = sqlalchemy.Column(sqlalchemy.Boolean, default=True)
+    ask_temp = sqlalchemy.Column(sqlalchemy.Boolean, default=True)
+
+    def connection_string(self):
+        return f'rtsp://{self.user}:{self.password}@{self.ip_address}:554{self.route}'
 
 
 if __name__ == '__main__':
