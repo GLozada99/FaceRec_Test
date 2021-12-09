@@ -110,8 +110,7 @@ class Time_Entry(Base, SerializerMixin):
         sqlalchemy.Integer, sqlalchemy.ForeignKey('persons.id'))
     picture_id = sqlalchemy.Column(
         sqlalchemy.Integer, sqlalchemy.ForeignKey('pictures.id'))
-    action = sqlalchemy.Column(sqlalchemy.String(length=7))  # entrada o salida
-    # sea entrada o salida, tendra la hora de este
+    action = sqlalchemy.Column(sqlalchemy.Enum(enums.EntryTypes))
     action_time = sqlalchemy.Column(sqlalchemy.DateTime)
 
     person = sqlalchemy.orm.relationship(
