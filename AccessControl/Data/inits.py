@@ -44,17 +44,19 @@ def camera_init():
         ask_mask=True, ask_temp=True)
     crud.add_entry(camera)
 
-    for i in range(2):
-        ip = config(f'CAMERA_{i}_IP')
-        user = config(f'CAMERA_{i}_USER')
-        password = config(f'CAMERA_{i}_PASSWORD')
-        route = config(f'CAMERA_{i}_ROUTE')
-        entry_type = enums.EntryTypes(int(config(f'CAMERA_{i}_ENTRYTYPE')))
-        ask_mask = bool(int(config(f'CAMERA_{i}_ASKMASK')))
-        ask_temp = bool(int(config(f'CAMERA_{i}_ASKTEMP')))
+    with open('./cameras.csv') as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            ip = row['ip']
+            user = row['user']
+            password = row['password']
+            route = row['route']
+            entry_type = enums.EntryTypes(int(row['entry_type']))
+            ask_mask = bool(int(row['ask_mask']))
+            ask_temp = bool(int(row['ask_temp']))
 
-        camera = classes.Camera(
-            ip_address=ip, user=user, password=password,
-            route=route, entry_type=entry_type,
-            ask_mask=ask_mask, ask_temp=ask_temp)
-        crud.add_entry(camera)
+            camera = classes.Camera(
+                ip_address=ip, user=user, password=password,
+                route=route, entry_type=entry_type,
+                ask_mask=ask_mask, ask_temp=ask_temp)
+            crud.add_entry(camera)

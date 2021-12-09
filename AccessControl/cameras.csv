@@ -1,0 +1,3 @@
+ip,user,password,route,entry_type,ask_mask,ask_temp
+10.130.1.4,gustavo,784512963uG,/Streaming/Channels/102,0,1,1
+10.130.1.6,admin,123456,/h264Preview_01_sub,1,0,0
