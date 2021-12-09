@@ -1,12 +1,12 @@
-import numpy as np
 import os
 import argparse
-from decouple import config
-import AccessControl.Functions.functions as func
-import AccessControl.Data.data_manipulation as dm
-from cv2 import cv2
-from tensorflow.keras.models import load_model
 import asyncio
+import AccessControl.Functions.functions as func
+import AccessControl.Data.crud as crud
+import AccessControl.Data.classes as classes
+
+from decouple import config
+from cv2 import cv2
 
 
 def main():
@@ -18,60 +18,21 @@ def main():
     ap.add_argument("-m", "--model", type=str,
                     default="../MaskDetection/mask_detector.model",
                     help="path to trained face mask detector model")
-    ap.add_argument("-c", "--confidence", type=float,
-                    default=0.5,
-                    help="minimum probability to filter weak detections")
 
-    ap.add_argument('--add-picture-file', action='store')
-    ap.add_argument('--add-picture-directory', action='store')
-    ap.add_argument('--face-recog-live', action='store_true')
-    ap.add_argument('--in', action='store_true')
-    ap.add_argument('--out', action='store_true')
-    ap.add_argument('--face-recog-file', action='store')
-    ap.add_argument('--show-pictures-database', action='store_true')
+    ap.add_argument('--headless', action='store_true')
+    ap.add_argument('--camera', action='store')
+    # ap.add_argument('--pc', action='store_true')
 
     args = vars(ap.parse_args())
 
-    if args['face_recog_live']:
-        # load our serialized face detector model from disk
-        # print(os.path.abspath(args["face"]), os.path.abspath(args["model"]))
-        prototxtPath = os.path.sep.join(
-            [os.path.abspath(args["face"]), "deploy.prototxt"])
-        weightsPath = os.path.sep.join([os.path.abspath(args["face"]),
-                                        "res10_300x300_ssd_iter_140000.caffemodel"])
-        faceNet = cv2.dnn.readNet(prototxtPath, weightsPath)
-        # load the face mask detector model from disk
-        maskNet = load_model(os.path.abspath(args["model"]))
+    maskNet, faceNet = func.get_mask_face_net(config('FACE'), config('MODEL'))
 
-        camera_user = ''
-        ask_mask = True
-        ask_temp = True
-        action = 'Exit'
-        if args['in']:
-            camera_ip = config('CAMERA_IN_IP')
-            camera_user = config('CAMERA_IN_USER')
-            camera_password = config('CAMERA_IN_PASSWORD')
-            end = 'h264Preview_01_sub'
-            ask_mask = False
-            ask_temp = False
-        elif args['out']:
-            camera_ip = config('CAMERA_OUT_IP')
-            camera_user = config('CAMERA_OUT_USER')
-            camera_password = config('CAMERA_OUT_PASSWORD', default='')
-            end = 'Streaming/Channels/102'
-            action = 'Entry'
+    camera = crud.get_entry(classes.Camera, args['camera'])
 
-        IP_camera_address = ((f'rtsp://{camera_user}:{camera_password}@{camera_ip}:\
-                             554/{end}') if camera_user else 0)
+    connection_string = camera.connection_string()
 
-        asyncio.run(func.face_recog_live(faceNet, maskNet,
-                    IP_camera_address, ask_mask, ask_temp, action))
-    elif args['add_picture_directory']:
-        dm.insert_picture_directory(args['add_picture_directory'])
-    elif args['face_recog_file']:
-        func.face_recog_file(args['face_recog_file'])
-    elif args['show_pictures_database']:
-        func.show_from_database()
+    asyncio.run(func.face_recog_live(faceNet, maskNet,
+                connection_string, camera.ask_mask, camera.ask_temp, camera.entry_type))
 
 
 if __name__ == "__main__":
