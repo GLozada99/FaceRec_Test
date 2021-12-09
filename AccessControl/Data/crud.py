@@ -138,6 +138,10 @@ def pictures_by_person(person):
     return _session.query(classes.Picture).filter_by(person_id=person.id).all()
 
 
+def appointments_by_person(person):
+    return _session.query(classes.Appointment).filter_by(person_id=person.id).all()
+
+
 def get_all_pictures():
     return (_session.query(classes.Picture).join(classes.Picture.person).
             filter(classes.Person.active).all())

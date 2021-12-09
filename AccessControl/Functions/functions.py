@@ -362,21 +362,28 @@ async def face_recog_live(faceNet, maskNet, camera_address, ask_mask, ask_temp, 
 
         print(face_recognition_flag, mask_detection_flag, temp_comprobation_flag)
         if face_recognition_flag and (mask_detection_flag or not ask_mask) and (temp_comprobation_flag or not ask_temp):
-            await mx.matrix_send_message(client, door_room_id, '1')
-            messages.append('5Welcome')
-            dm.insert_picture_discovered(
-                p_id, rgb_frame, unknown_face_encoding, action)
-            mask_detection_flag = False
-            face_recognition_flag = False
-            temp_comprobation_flag = False
+            open_door = True
+            if profile == enums.PictureClassification.ACCEPTED_APPOINTMENTS:
+                available_appointment = dm.has_available_appointment(p_id)
+                open_door = available_appointment
+            if open_door:
+                await mx.matrix_send_message(client, door_room_id, '1')
+                messages.append('5Welcome')
+                dm.insert_picture_discovered(
+                    p_id, rgb_frame, unknown_face_encoding, action)
+                mask_detection_flag = False
+                face_recognition_flag = False
+                temp_comprobation_flag = False
 
-            time_mask_detection = time.time()
-            time_face_recognition = time.time()
-            time_temp_comprobation = time.time()
-            time_since_mask = time.time()
-            time_since_face = time.time()
-            time_welcomed = time.time()
-            print('Bienvenido')
+                time_mask_detection = time.time()
+                time_face_recognition = time.time()
+                time_temp_comprobation = time.time()
+                time_since_mask = time.time()
+                time_since_face = time.time()
+                time_welcomed = time.time()
+                print('Bienvenido')
+            else:
+                messages.append('9Appointment')
 
             # open door
     # if message_task is not None:

@@ -165,7 +165,7 @@ def get_pictures_encodings_by_type(profile):
 
     pic_list = []
     for pic in pics:
-        person_id = pic.person_id 
+        person_id = pic.person_id
         print(pic.person)
         pic_id = pic.id
         face_encodings = unprocess_picture(pic.face_bytes)
@@ -191,3 +191,15 @@ def compute_hash(raw_string: str):
 def compare_hash(raw_string: str, hash_string: str):
     result = compute_hash(raw_string) == hash_string
     return result
+
+
+def has_available_appointment(person_id):
+    appointments = crud.appointments_by_person(
+        crud.get_entry(classes.Person, person_id))
+    result = False
+    for appointment in appointments:
+        if appointment.start <= datetime.now() and appointment.end >= datetime.now():
+            result = True
+            break
+
+    return results
