@@ -4,7 +4,7 @@ import AccessControl.Data.crud as crud
 import AccessControl.Data.data_manipulation as dm
 import AccessControl.Data.classes as classes
 import AccessControl.Data.enums as enums
-
+from decouple import config
 from AccessControl.API.api import _generate_person_picture_vaccines
 
 
@@ -43,10 +43,12 @@ def camera_init():
         user = config(f'CAMERA_{i}_USER')
         password = config(f'CAMERA_{i}_PASSWORD')
         route = config(f'CAMERA_{i}_ROUTE')
-        entry_type = enums.EntryTypes(int(config(f'CAMERA_{i}_EntryType')))
+        entry_type = enums.EntryTypes(int(config(f'CAMERA_{i}_ENTRYTYPE')))
+        ask_mask = bool(int(config(f'CAMERA_{i}_ASKMASK')))
+        ask_temp = bool(int(config(f'CAMERA_{i}_ASKTEMP')))
 
         camera = classes.Camera(
-            ip_address=ip, user=user,
-            password=password, route=route,
-            entry_type=entry_type)
+            ip_address=ip, user=user, password=password,
+            route=route, entry_type=entry_type,
+            ask_mask=ask_mask, ask_temp=ask_temp)
         crud.add_entry(camera)
