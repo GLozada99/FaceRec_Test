@@ -1,4 +1,5 @@
 import sys
+import os
 import time
 from datetime import datetime
 import numpy as np
@@ -13,11 +14,27 @@ import AccessControl.Data.data_manipulation as dm
 import AccessControl.Functions.matrix_functions as mx
 from tensorflow.keras.preprocessing.image import img_to_array
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
+from tensorflow.keras.models import load_model
+
 import asyncio
+
+
+def get_mask_face_net(face, model):
+    prototxtPath = os.path.sep.join(
+        [os.path.abspath(face), "deploy.prototxt"])
+    weightsPath = os.path.sep.join([os.path.abspath(face),
+                                    "res10_300x300_ssd_iter_140000.caffemodel"])
+    faceNet = cv2.dnn.readNet(prototxtPath, weightsPath)
+    # load the face mask detector model from disk
+    maskNet = load_model(os.path.abspath(model))
+
+    return maskNet, faceNet
+
 
 def has_time_passed(time_since, interval):
     # returns true if interval of time has passed since a specific time
     return (time.time() - time_since) > interval
+
 
 def detect_and_predict_mask(frame, faceNet, maskNet):
     # grab the dimensions of the frame and then construct a blob
@@ -36,7 +53,7 @@ def detect_and_predict_mask(frame, faceNet, maskNet):
     preds = []
 
     # loop over the detections
-    for i in range(0, detections.shape[2]):
+    for i in range(detections.shape[2]):
         # extract the confidence (i.e., probability) associated with
         # the detection
         confidence = detections[0, 0, i, 2]
@@ -68,7 +85,7 @@ def detect_and_predict_mask(frame, faceNet, maskNet):
             locs.append((startX, startY, endX, endY))
 
     # only make a predictions if at least one face was detected
-    if len(faces) > 0:
+    if faces:
         # for faster inference we'll make batch predictions on *all*
         # faces at the same time rather than one-by-one predictions
         # in the above `for` loop
@@ -79,6 +96,7 @@ def detect_and_predict_mask(frame, faceNet, maskNet):
     # and their corresponding predictions
     return (locs, preds)
 
+
 async def has_mask(frame, faceNet, maskNet):
     has_mask = None
     _, preds = detect_and_predict_mask(frame, faceNet, maskNet)
@@ -87,14 +105,13 @@ async def has_mask(frame, faceNet, maskNet):
         # each pred is a tuple of probability of having and not having mask.
         # Only first face is taken
         mask, without_mask = preds[0]
-        has_mask = True if mask > without_mask else False
+        has_mask = mask > without_mask
     # True means it has mask, False means it doesn't
     # None means there's no face on the picture
     return has_mask
 
 
 async def face_recog(frame, encodings):
-    tolerance = 0.5
     rgb_frame = frame[:, :, ::-1]
     face_locations = face_recognition.face_locations(rgb_frame)
     unknown_face_encondings = face_recognition.face_encodings(
@@ -104,6 +121,7 @@ async def face_recog(frame, encodings):
     unknown_face_enconding = None
     if unknown_face_encondings:
         unknown_face_enconding = unknown_face_encondings[0]
+        tolerance = 0.5
         results = face_recognition.compare_faces(
             encodings, unknown_face_enconding, tolerance)
         face_distances = face_recognition.face_distance(
@@ -114,9 +132,8 @@ async def face_recog(frame, encodings):
 
     return (result, best_match_index, unknown_face_enconding, rgb_frame)
 
-async def temp_okay(client, acceptable_time, room_id):
-    temp_threshold = 38  # in degrees celcius
 
+async def temp_okay(client, acceptable_time, room_id):
     data = await mx.matrix_get_messages(client, room_id)
     good_value_flag = False
     answer = None
@@ -131,13 +148,15 @@ async def temp_okay(client, acceptable_time, room_id):
         except ValueError:
             print('Ultima entrada no es un número')
 
-        if good_value_flag:
-            if not has_time_passed(time, acceptable_time):
-                answer = temp < temp_threshold
+        if good_value_flag and not has_time_passed(time, acceptable_time):
+            temp_threshold = 38  # in degrees celcius
+
+            answer = temp < temp_threshold
 
         data.clear()
 
     return (answer, temp)
+
 
 async def get_profile(client, room_id):
     data = await mx.matrix_get_messages(client, room_id)
@@ -154,32 +173,20 @@ async def get_profile(client, room_id):
 
     return profile
 
+
 async def face_recog_live(faceNet, maskNet, camera_address, ask_mask, ask_temp, action):
-    # timestamp for last time since has_mask was called,
-    # to only call every 'MASK_DETECT_INTERVAL' seconds
     time_mask_detection = time.time()
-
-    # timestamp for last time compare_faces was called,
-    # to only call every 'FACE_RECOG_INTERVAL' seconds
     time_face_recognition = time.time()
-
-    # timestamp for last time temp_okay was called,
-    # to only call every 'TEMP_COMPROBATION_INTERVAL' seconds
     time_temp_comprobation = time.time()
 
-    # timestamp for mask being detected, to allow for a
-    # window in which mask_detection_flag will be true
     time_since_mask = time.time()
-
-    # timestamp for face being recognized, to allow for a
-    # window in which face_recognition_flag will be true
     time_since_face = time.time()
-
-    # maximum time since an acceptable temp was taken from the sensor
-    acceptable_temp_time = 20
 
     # timestamp for when person was welcomed (face and mask were approved)
     time_welcomed = time.time()
+
+    # maximum time since an acceptable temp was taken from the sensor
+    acceptable_temp_time = 20
 
     video_capture = cv2.VideoCapture(camera_address)  # starting camera
 
@@ -203,14 +210,12 @@ async def face_recog_live(faceNet, maskNet, camera_address, ask_mask, ask_temp, 
     # indicates temperature has been comprobated and aprooved
     temp_comprobation_flag = False
 
-    # time interval in seconds: TIIS
-    MASK_DETECT_INTERVAL = 5  # TIIS for calling mask detection function
-    FACE_RECOG_INTERVAL = 8  # TIIS for calling face recognition function
-    TEMP_COMPROBATION_INTERVAL = 10  # TIIS for calling temp comprobation function
-    TIME_START_AGAIN = 13  # TIIS for start again after opening a door
-    WINDOW_TIME_SINCE = 30  # TIIS a person has to remove it's mask
-    # after it has been detected for face recog
-    # or time it has to put a mask on after it's face has been recognized
+    MASK_DETECT_INTERVAL = 5
+    FACE_RECOG_INTERVAL = 8
+    TEMP_COMPROBATION_INTERVAL = 10
+    TIME_START_AGAIN = 13
+    WINDOW_TIME_SINCE = 30
+
     messages = []
     message_task = None
     profile = await get_profile(client, profile_room_id)
@@ -222,6 +227,7 @@ async def face_recog_live(faceNet, maskNet, camera_address, ask_mask, ask_temp, 
     for person_id, encoding, _ in pics:
         person_ids.append(person_id)
         encodings.append(encoding)
+    print(profile)
     while True:
         time.sleep(0.02)
         _, frame = video_capture.read()  # getting frame
@@ -309,7 +315,7 @@ async def face_recog_live(faceNet, maskNet, camera_address, ask_mask, ask_temp, 
                 messages.append('7TempIsGreater')
             elif temp_comprobation_flag is None:
                 messages.append('8TakeTempSens')
-        
+
         print(face_recognition_flag, mask_detection_flag, temp_comprobation_flag)
         if face_recognition_flag and (mask_detection_flag or not ask_mask) and (temp_comprobation_flag or not ask_temp):
             open_door = True
@@ -340,9 +346,3 @@ async def face_recog_live(faceNet, maskNet, camera_address, ask_mask, ask_temp, 
     #     await message_task
     video_capture.release()
     cv2.destroyAllWindows()
-
-
-
-
-
-
