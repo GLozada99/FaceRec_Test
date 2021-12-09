@@ -471,12 +471,13 @@ def make_appointment():
                 crud.add_entry(picture)
                 for vaccine in vaccine_list:
                     crud.add_entry(vaccine)
-                mgs = 'Appointment set successfully'
+                msg = 'Appointment set successfully'
                 status = HTTPStatus.OK
             else:
                 msg = 'No correct picture'
         except Exception as e:
-            msg = str(e)
+            print(e)
+            msg = 'Error setting appointment'
 
     return jsonify(msg=msg), status
 
