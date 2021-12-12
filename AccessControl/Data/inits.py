@@ -5,7 +5,7 @@ import AccessControl.Data.data_manipulation as dm
 import AccessControl.Data.classes as classes
 import AccessControl.Data.enums as enums
 from decouple import config
-from AccessControl.API.api import _generate_person_picture_vaccines
+from AccessControl.API.api import _generate_person_picture_vaccines, _generate_employee
 
 
 def admin_init():
@@ -20,15 +20,7 @@ def admin_init():
         for row in reader:
             person, picture, vaccine_list, _ = _generate_person_picture_vaccines(
                 row)
-            person.role = enums.PersonRole(int(row['role']))
-
-            # Employee data
-            position = row['position']
-            start_date = row['start_date']
-            password = dm.compute_hash(row['password'])
-            employee = classes.Employee(
-                position=position, start_date=start_date,
-                password=password, person=person)
+            employee = _generate_employee(row, person, False)
 
             if picture:
                 crud.add_entry(employee)
