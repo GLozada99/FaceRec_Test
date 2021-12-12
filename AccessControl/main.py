@@ -29,11 +29,7 @@ def main():
 
     camera = crud.get_entry(classes.Camera, args['camera'])
 
-    connection_string = camera.connection_string()
-
-    asyncio.run(func.face_recog_live(faceNet, maskNet,
-                connection_string, camera.ask_mask, camera.ask_temp, camera.entry_type))
-
+    asyncio.run(func.face_recog_live(faceNet, maskNet,camera))
 
 if __name__ == "__main__":
     main()

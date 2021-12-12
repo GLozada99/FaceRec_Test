@@ -174,7 +174,7 @@ async def get_profile(client, room_id):
     return profile
 
 
-async def face_recog_live(faceNet, maskNet, camera_address, ask_mask, ask_temp, action):
+async def face_recog_live(faceNet, maskNet, camera):
     time_mask_detection = time.time()
     time_face_recognition = time.time()
     time_temp_comprobation = time.time()
@@ -188,7 +188,7 @@ async def face_recog_live(faceNet, maskNet, camera_address, ask_mask, ask_temp, 
     # maximum time since an acceptable temp was taken from the sensor
     acceptable_temp_time = 20
 
-    video_capture = cv2.VideoCapture(camera_address)  # starting camera
+    video_capture = cv2.VideoCapture(camera.connection_string())  # starting camera
 
     server = config('MATRIX_SERVER')
     user = config('MATRIX_USER')
@@ -205,9 +205,8 @@ async def face_recog_live(faceNet, maskNet, camera_address, ask_mask, ask_temp, 
     door_room_id = await mx.matrix_get_room_id(client, door_room_name)
     profile_room_id = await mx.matrix_get_room_id(client, profile_room_name)
 
-    mask_detection_flag = False  # indicates a mask has been detected
-    face_recognition_flag = False  # indicates a face has been recognized
-    # indicates temperature has been comprobated and aprooved
+    mask_detection_flag = False
+    face_recognition_flag = False
     temp_comprobation_flag = False
 
     MASK_DETECT_INTERVAL = 5
@@ -297,7 +296,7 @@ async def face_recog_live(faceNet, maskNet, camera_address, ask_mask, ask_temp, 
                 # rgb_frame, unknown_face_enconding)
                 if mask_detection_flag:
                     messages.append('3PutMaskOn')
-                elif ask_mask:
+                elif camera.ask_mask:
                     messages.append('4MaskWasNotDetected')
 
             else:
@@ -305,7 +304,7 @@ async def face_recog_live(faceNet, maskNet, camera_address, ask_mask, ask_temp, 
         # After a face has been recognized and a mask has been detected, the door will open if temperature is good
         # and all control variables will reset to original state
 
-        if has_time_passed(time_temp_comprobation, TEMP_COMPROBATION_INTERVAL) and ask_mask:
+        if has_time_passed(time_temp_comprobation, TEMP_COMPROBATION_INTERVAL) and camera.ask_mask:
             temp_okay_task = asyncio.create_task(
                 temp_okay(client, acceptable_temp_time, temper_room_id))
             temp_comprobation_flag, _ = await temp_okay_task
@@ -317,7 +316,7 @@ async def face_recog_live(faceNet, maskNet, camera_address, ask_mask, ask_temp, 
                 messages.append('8TakeTempSens')
 
         print(face_recognition_flag, mask_detection_flag, temp_comprobation_flag)
-        if face_recognition_flag and (mask_detection_flag or not ask_mask) and (temp_comprobation_flag or not ask_temp):
+        if face_recognition_flag and (mask_detection_flag or not camera.ask_mask) and (temp_comprobation_flag or not camera.ask_temp):
             open_door = True
             if profile == enums.PictureClassification.ACCEPTED_APPOINTMENTS:
                 available_appointment = dm.has_available_appointment(p_id)
@@ -326,7 +325,7 @@ async def face_recog_live(faceNet, maskNet, camera_address, ask_mask, ask_temp, 
                 await mx.matrix_send_message(client, door_room_id, '1')
                 messages.append('5Welcome')
                 dm.insert_picture_discovered(
-                    p_id, rgb_frame, unknown_face_encoding, action)
+                    p_id, rgb_frame, unknown_face_encoding, camera.entry_type.name)
                 mask_detection_flag = False
                 face_recognition_flag = False
                 temp_comprobation_flag = False
@@ -341,8 +340,6 @@ async def face_recog_live(faceNet, maskNet, camera_address, ask_mask, ask_temp, 
             else:
                 messages.append('9Appointment')
 
-            # open door
-    # if message_task is not None:
-    #     await message_task
+
     video_capture.release()
     cv2.destroyAllWindows()
