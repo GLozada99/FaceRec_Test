@@ -32,10 +32,13 @@ class Person(Base, SerializerMixin):
         sqlalchemy.String(length=20), unique=True)
     first_name = sqlalchemy.Column(sqlalchemy.String(length=30))
     last_name = sqlalchemy.Column(sqlalchemy.String(length=30))
-    birth_date = sqlalchemy.Column(sqlalchemy.Date)
-    email = sqlalchemy.Column(sqlalchemy.String(length=30))
+    cellphone = sqlalchemy.Column(sqlalchemy.String(length=20))
     role = sqlalchemy.Column(sqlalchemy.Enum(enums.PersonRole))
     active = sqlalchemy.Column(sqlalchemy.Boolean, default=True)
+
+    serialize_rules = ('-employee','-pictures',
+                       '-appointments','-vaccines',
+                       '-time_entries','get_role', '-role')
 
     employee = sqlalchemy.orm.relationship(
         "Employee", back_populates="person")
@@ -49,6 +52,9 @@ class Person(Base, SerializerMixin):
     def __str__(self) -> str:
         return f'Person... id: {self.id}, name: {self.first_name} {self.last_name}'
 
+    def get_role(self) -> str:
+        return {"name":self.role.name, "value": self.role.value}
+
 
 class Employee(Base, SerializerMixin):
     __tablename__ = 'employees'
@@ -56,13 +62,19 @@ class Employee(Base, SerializerMixin):
         'persons.id'), primary_key=True)
     password = sqlalchemy.Column(sqlalchemy.String(length=64))
     position = sqlalchemy.Column(sqlalchemy.String(length=30))
+    birth_date = sqlalchemy.Column(sqlalchemy.Date)
+    email = sqlalchemy.Column(sqlalchemy.String(length=30))
+
     start_date = sqlalchemy.Column(sqlalchemy.Date)
+
+    serialize_rules = ('-person.employee','-appointments','-comments', '-password')
 
     person = sqlalchemy.orm.relationship("Person", back_populates="employee")
     appointments = sqlalchemy.orm.relationship(
         "Appointment", back_populates="employee")
     comments = sqlalchemy.orm.relationship(
         "Comment", back_populates="employee")
+
 
     def __str__(self) -> str:
         return f'Employee... id: {self.id}, name: {self.person.first_name} {self.person.last_name}'
@@ -76,8 +88,8 @@ class Picture(Base, SerializerMixin):
 
     person_id = sqlalchemy.Column(
         sqlalchemy.Integer, sqlalchemy.ForeignKey('persons.id'))
-    # time_entry_id = sqlalchemy.Column(
-    #     sqlalchemy.Integer, sqlalchemy.ForeignKey('time_entries.id'))
+
+    serialize_rules = ('-person','-time_entry','-person_id')
 
     person = sqlalchemy.orm.relationship("Person", back_populates="pictures")
     time_entry = sqlalchemy.orm.relationship(
@@ -90,11 +102,14 @@ class Picture(Base, SerializerMixin):
 class Vaccine(Base, SerializerMixin):
     __tablename__ = 'vaccines'
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
-    person_id = sqlalchemy.Column(
-        sqlalchemy.Integer, sqlalchemy.ForeignKey('persons.id'))
     dose_lab = sqlalchemy.Column(sqlalchemy.Enum(enums.VaccineLab))
     lot_num = sqlalchemy.Column(sqlalchemy.String(length=20))
     dose_date = sqlalchemy.Column(sqlalchemy.Date)
+
+    person_id = sqlalchemy.Column(
+        sqlalchemy.Integer, sqlalchemy.ForeignKey('persons.id'))
+
+    serialize_rules = ('-person', 'lab_name', '-dose_lab', '-person_id')
 
     person = sqlalchemy.orm.relationship("Person", back_populates="vaccines")
 
@@ -102,16 +117,22 @@ class Vaccine(Base, SerializerMixin):
         return f'Vaccine... id: {self.id}, person name: {self.person.first_name} \
             lab: {self.dose_lab} date:{self.dose_date}'
 
+    def lab_name(self) -> str:
+        return {"name":self.dose_lab.name, "value": self.dose_lab.value}
+
 
 class Time_Entry(Base, SerializerMixin):
     __tablename__ = 'time_entries'
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
+    action = sqlalchemy.Column(sqlalchemy.Enum(enums.EntryTypes))
+    action_time = sqlalchemy.Column(sqlalchemy.DateTime)
+
     person_id = sqlalchemy.Column(
         sqlalchemy.Integer, sqlalchemy.ForeignKey('persons.id'))
     picture_id = sqlalchemy.Column(
         sqlalchemy.Integer, sqlalchemy.ForeignKey('pictures.id'))
-    action = sqlalchemy.Column(sqlalchemy.Enum(enums.EntryTypes))
-    action_time = sqlalchemy.Column(sqlalchemy.DateTime)
+
+    serialize_rules = ('-picture','-person_id','-picture_id')
 
     person = sqlalchemy.orm.relationship(
         "Person", back_populates="time_entries")
@@ -136,10 +157,16 @@ class Appointment(Base, SerializerMixin):
     employee_id = sqlalchemy.Column(
         sqlalchemy.Integer, sqlalchemy.ForeignKey('employees.id'))
 
+    serialize_rules = ('-person','-status', 'person_id', 'employee_id')
+
     person = sqlalchemy.orm.relationship(
         "Person", back_populates="appointments")
     employee = sqlalchemy.orm.relationship(
         "Employee", back_populates="appointments")
+
+    def get_status(self) -> str:
+        return {"name":self.status.name, "value": self.status.value}
+
 
 
 class Comment(Base, SerializerMixin):
@@ -149,6 +176,8 @@ class Comment(Base, SerializerMixin):
     text = sqlalchemy.Column(sqlalchemy.String(length=250))
     employee_id = sqlalchemy.Column(
         sqlalchemy.Integer, sqlalchemy.ForeignKey('employees.id'))
+
+    serialize_rules = ('-employee','-employee_id')
 
     employee = sqlalchemy.orm.relationship(
         "Employee", back_populates="comments")
@@ -175,6 +204,8 @@ if __name__ == '__main__':
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
 
-    from AccessControl.Data.inits import admin_init, camera_init
-    admin_init()
-    camera_init()
+    import AccessControl.Data.inits as inits
+    inits.employee_init()
+    inits.person_init()
+    inits.camera_init()
+    inits.appointment_init()
