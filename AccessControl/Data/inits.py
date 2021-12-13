@@ -5,22 +5,22 @@ import AccessControl.Data.data_manipulation as dm
 import AccessControl.Data.classes as classes
 import AccessControl.Data.enums as enums
 from decouple import config
-from AccessControl.API.api import _generate_person_picture_vaccines, _generate_employee
+import AccessControl.Data.generators as gn
 
 
-def admin_init():
+def employee_init():
     maxInt = sys.maxsize
     try:
         csv.field_size_limit(maxInt)
     except OverflowError:
         maxInt = int(maxInt / 10)
 
-    with open('./employees.csv') as file:
+    with open('./CSVs/employees.csv') as file:
         reader = csv.DictReader(file)
         for row in reader:
-            person, picture, vaccine_list, _ = _generate_person_picture_vaccines(
+            person, picture, vaccine_list, _ = gn.generate_person_picture_vaccines(
                 row)
-            employee = _generate_employee(row, person, False)
+            employee = gn.generate_employee(row, person, False)
 
             if picture:
                 crud.add_entry(employee)
@@ -36,7 +36,7 @@ def camera_init():
         ask_mask=True, ask_temp=True)
     crud.add_entry(camera)
 
-    with open('./cameras.csv') as file:
+    with open('./CSVs/cameras.csv') as file:
         reader = csv.DictReader(file)
         for row in reader:
             ip = row['ip']
@@ -52,3 +52,36 @@ def camera_init():
                 route=route, entry_type=entry_type,
                 ask_mask=ask_mask, ask_temp=ask_temp)
             crud.add_entry(camera)
+
+def person_init():
+    maxInt = sys.maxsize
+    try:
+        csv.field_size_limit(maxInt)
+    except OverflowError:
+        maxInt = int(maxInt / 10)
+
+    with open('./CSVs/persons.csv') as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            person, picture, vaccine_list, _ = gn.generate_person_picture_vaccines(
+                row)
+            if picture:
+                crud.add_entry(person)
+                crud.add_entry(picture)
+                for vaccine in vaccine_list:
+                    crud.add_entry(vaccine)
+
+def appointment_init():
+    maxInt = sys.maxsize
+    try:
+        csv.field_size_limit(maxInt)
+    except OverflowError:
+        maxInt = int(maxInt / 10)
+
+    with open('./CSVs/appointments.csv') as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            person_id = int(row['person_id'])
+            employee_id = int(row['employee_id'])
+            appointment = gn.generate_appointment(row, employee_id, crud.get_person(person_id))
+            crud.add_entry(appointment)
