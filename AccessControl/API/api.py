@@ -5,7 +5,7 @@ import io
 import re
 import sys
 from decouple import config
-from datetime import datetime
+from datetime import datetime, timedelta
 from http import HTTPStatus
 
 import requests
@@ -23,6 +23,7 @@ import AccessControl.Functions.matrix_functions as mx
 import AccessControl.Data.enums as enums
 
 
+ACCESS_EXPIRES = timedelta(hours=1)
 _secret = config('FLASK_SECRET')
 
 app = Flask(__name__)
