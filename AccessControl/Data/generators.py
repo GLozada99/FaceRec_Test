@@ -22,7 +22,7 @@ def generate_person(data):
     person = crud.person_by_ident_doc(identification_doc)
     existent = False
     if person:
-        person = person[0]
+        person = person
         if person.active:
             raise ValueError('The employee already exists')
         person.identification_document = identification_doc
