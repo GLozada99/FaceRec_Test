@@ -49,12 +49,11 @@ def _set_appointment_status(appointment, status):
         appointment.appointment_end = datetime.now()
     crud.commit()
 
-
 @app.route('/persons', methods=['GET'])
 # @jwt_required()
 def list_persons():
     '''Returns all persons who are not employees'''
-    json_data = [person.to_dict() for person in crud.get_persons()]
+    json_data = [flatten(person.to_dict()) for person in crud.get_persons()]
     msg = '' if len(json_data) else 'No entries'
     return jsonify(result=json_data, msg=msg), HTTPStatus.OK
 
@@ -101,7 +100,7 @@ def auth_employee_info():
 # @jwt_required()
 def get_person_by_id(id):
     '''Returns the picture and vaccine list of a specific person given it's ID'''
-    person = crud.person(int(id))
+    person = crud.get_person(int(id))
     json_data = {}
     msg = 'No entry with this ID'
     status = HTTPStatus.BAD_REQUEST
@@ -146,7 +145,7 @@ def get_appointment_by_id(id):
     if appointment:
         person = appointment.person
         json_data['picture'] = _get_person_picture(person)
-        json_data['person_info'] = person.to_dict()
+        json_data['person_info'] = flatten(person.to_dict())
         json_data['vaccines'] = [flatten(vaccine.to_dict()) for vaccine in crud.vaccines_by_person(person)]
         msg = ''
         status = HTTPStatus.OK
