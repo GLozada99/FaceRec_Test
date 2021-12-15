@@ -1,33 +1,37 @@
 import csv
 import sys
+import requests
+import traceback
 import AccessControl.Data.crud as crud
 import AccessControl.Data.data_manipulation as dm
 import AccessControl.Data.classes as classes
-import AccessControl.Data.enums as enums
-from decouple import config
 import AccessControl.Data.generators as gn
+import AccessControl.Data.enums as enums
+
+from decouple import config
 
 
-def employee_init():
-    maxInt = sys.maxsize
-    try:
-        csv.field_size_limit(maxInt)
-    except OverflowError:
-        maxInt = int(maxInt / 10)
+auth = None
 
-    with open('./CSVs/employees.csv') as file:
+maxInt = sys.maxsize
+try:
+    csv.field_size_limit(maxInt)
+except OverflowError:
+    maxInt = int(maxInt / 10)
+
+def admin_init():
+    with open('./CSVs/admin.csv') as file:
         reader = csv.DictReader(file)
         for row in reader:
             person, picture, vaccine_list, _ = gn.generate_person_picture_vaccines(
                 row)
             employee = gn.generate_employee(row, person, False)
-
             if picture:
                 crud.add_entry(employee)
                 crud.add_entry(picture)
                 for vaccine in vaccine_list:
                     crud.add_entry(vaccine)
-
+    return employee.id, row['password']
 
 def camera_init():
     camera = classes.Camera(
@@ -53,35 +57,34 @@ def camera_init():
                 ask_mask=ask_mask, ask_temp=ask_temp)
             crud.add_entry(camera)
 
-def person_init():
-    maxInt = sys.maxsize
-    try:
-        csv.field_size_limit(maxInt)
-    except OverflowError:
-        maxInt = int(maxInt / 10)
+def employee_init():
+    with open('./CSVs/employees.csv') as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            requests.post('http://localhost:5000/employee', json=row, headers={'Authorization': auth})
 
+def person_init():
     with open('./CSVs/persons.csv') as file:
         reader = csv.DictReader(file)
         for row in reader:
-            person, picture, vaccine_list, _ = gn.generate_person_picture_vaccines(
-                row)
-            if picture:
-                crud.add_entry(person)
-                crud.add_entry(picture)
-                for vaccine in vaccine_list:
-                    crud.add_entry(vaccine)
+            requests.post('http://localhost:5000/person', json=row, headers={'Authorization': auth})
 
 def appointment_init():
-    maxInt = sys.maxsize
-    try:
-        csv.field_size_limit(maxInt)
-    except OverflowError:
-        maxInt = int(maxInt / 10)
-
-    with open('./CSVs/appointments.csv') as file:
+    with open('./CSVs/persons.csv') as file:
         reader = csv.DictReader(file)
         for row in reader:
-            person_id = int(row['person_id'])
-            employee_id = int(row['employee_id'])
-            appointment = gn.generate_appointment(row, employee_id, crud.get_person(person_id))
-            crud.add_entry(appointment)
+            requests.post('http://localhost:5000/first-appointment', json=row, headers={'Authorization': auth})
+
+def init():
+    try:
+        camera_init()
+        emp_id, password = admin_init()
+        response = requests.post('http://localhost:5000/login', json={'id': emp_id, 'password': password})
+
+        global auth
+        auth = response.json()['access_token']
+
+        employee_init()
+        appointment_init()
+    except Exception as e:
+        traceback.print_exc()

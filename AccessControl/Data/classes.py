@@ -157,7 +157,7 @@ class Appointment(Base, SerializerMixin):
     employee_id = sqlalchemy.Column(
         sqlalchemy.Integer, sqlalchemy.ForeignKey('employees.id'))
 
-    serialize_rules = ('-person','-status', 'person_id', 'employee_id')
+    serialize_rules = ('-person','-status', 'person_id', 'employee_id', 'get_status')
 
     person = sqlalchemy.orm.relationship(
         "Person", back_populates="appointments")
@@ -204,8 +204,5 @@ if __name__ == '__main__':
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
 
-    import AccessControl.Data.inits as inits
-    inits.employee_init()
-    inits.person_init()
-    inits.camera_init()
-    inits.appointment_init()
+    import AccessControl.Data.api_inits as inits
+    inits.init()
