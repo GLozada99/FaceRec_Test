@@ -342,7 +342,7 @@ def first_appointment():
                 data)
 
             employee_id = int(data['employee_id'])
-            appointment = gn.generate_appointment(employee_id, person)
+            appointment = gn.generate_appointment(data, employee_id, person)
 
             if picture:
                 crud.add_entry(appointment)
@@ -389,21 +389,19 @@ def login():
         # if there is no employee or the password is wrong, this will be the msg
         msg = 'Bad username or password'
         status = HTTPStatus.BAD_REQUEST
-
         if employee:
             if employee.password:
                 if dm.compare_hash(password, employee.password):
-                    access_token = create_access_token(identity=id)
+                    access_token = create_access_token(identity=int(data["id"]))
                     status = HTTPStatus.OK
                     msg = 'Welcome'
             else:
                 msg = 'There is no password set for this user'
                 status = HTTPStatus.SEE_OTHER
-
     return jsonify(msg=msg, access_token=access_token), status
 
 @app.route('/open-door', methods=['GET'])
-@jwt_required()
+# @jwt_required()
 async def openDoor():
     time_out = 10
     server = config('MATRIX_SERVER')
