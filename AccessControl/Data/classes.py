@@ -24,6 +24,7 @@ Base = declarative_base()
 
 # creating clases
 
+
 class Person(Base, SerializerMixin):
     __tablename__ = 'persons'
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
@@ -31,21 +32,28 @@ class Person(Base, SerializerMixin):
         sqlalchemy.String(length=20), unique=True)
     first_name = sqlalchemy.Column(sqlalchemy.String(length=30))
     last_name = sqlalchemy.Column(sqlalchemy.String(length=30))
-    birth_date = sqlalchemy.Column(sqlalchemy.Date)
-    email = sqlalchemy.Column(sqlalchemy.String(length=30))
+    cellphone = sqlalchemy.Column(sqlalchemy.String(length=20))
     role = sqlalchemy.Column(sqlalchemy.Enum(enums.PersonRole))
     active = sqlalchemy.Column(sqlalchemy.Boolean, default=True)
+
+    serialize_rules = ('-employee','-pictures',
+                       '-appointments','-vaccines',
+                       '-time_entries','get_role', '-role')
 
     employee = sqlalchemy.orm.relationship(
         "Employee", back_populates="person")
     pictures = sqlalchemy.orm.relationship("Picture", back_populates="person")
-    appointments = sqlalchemy.orm.relationship("Appointment", back_populates="person")
+    appointments = sqlalchemy.orm.relationship(
+        "Appointment", back_populates="person")
     vaccines = sqlalchemy.orm.relationship("Vaccine", back_populates="person")
     time_entries = sqlalchemy.orm.relationship(
         "Time_Entry", back_populates="person")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'Person... id: {self.id}, name: {self.first_name} {self.last_name}'
+
+    def get_role(self) -> str:
+        return {"name":self.role.name, "value": self.role.value}
 
 
 class Employee(Base, SerializerMixin):
@@ -54,14 +62,21 @@ class Employee(Base, SerializerMixin):
         'persons.id'), primary_key=True)
     password = sqlalchemy.Column(sqlalchemy.String(length=64))
     position = sqlalchemy.Column(sqlalchemy.String(length=30))
+    birth_date = sqlalchemy.Column(sqlalchemy.Date)
+    email = sqlalchemy.Column(sqlalchemy.String(length=30))
+
     start_date = sqlalchemy.Column(sqlalchemy.Date)
 
-    person = sqlalchemy.orm.relationship("Person", back_populates="employee")
-    appointments = sqlalchemy.orm.relationship("Appointment", back_populates="employee")
-    comments = sqlalchemy.orm.relationship("Comment", back_populates="employee")
+    serialize_rules = ('-person.employee','-appointments','-comments', '-password')
 
-    # Sintomas y lo demas referente a enfermedades y/o covid pendiente
-    def __str__(self):
+    person = sqlalchemy.orm.relationship("Person", back_populates="employee")
+    appointments = sqlalchemy.orm.relationship(
+        "Appointment", back_populates="employee")
+    comments = sqlalchemy.orm.relationship(
+        "Comment", back_populates="employee")
+
+
+    def __str__(self) -> str:
         return f'Employee... id: {self.id}, name: {self.person.first_name} {self.person.last_name}'
 
 
@@ -73,68 +88,86 @@ class Picture(Base, SerializerMixin):
 
     person_id = sqlalchemy.Column(
         sqlalchemy.Integer, sqlalchemy.ForeignKey('persons.id'))
-    # time_entry_id = sqlalchemy.Column(
-    #     sqlalchemy.Integer, sqlalchemy.ForeignKey('time_entries.id'))
+
+    serialize_rules = ('-person','-time_entry','-person_id')
 
     person = sqlalchemy.orm.relationship("Person", back_populates="pictures")
     time_entry = sqlalchemy.orm.relationship(
         "Time_Entry", back_populates="picture", uselist=False)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'Picture... id: {self.id}, person name: {self.person.first_name} {self.person.last_name}'
 
 
 class Vaccine(Base, SerializerMixin):
     __tablename__ = 'vaccines'
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
-    person_id = sqlalchemy.Column(
-        sqlalchemy.Integer, sqlalchemy.ForeignKey('persons.id'))
     dose_lab = sqlalchemy.Column(sqlalchemy.Enum(enums.VaccineLab))
     lot_num = sqlalchemy.Column(sqlalchemy.String(length=20))
     dose_date = sqlalchemy.Column(sqlalchemy.Date)
 
+    person_id = sqlalchemy.Column(
+        sqlalchemy.Integer, sqlalchemy.ForeignKey('persons.id'))
+
+    serialize_rules = ('-person', 'lab_name', '-dose_lab', '-person_id')
+
     person = sqlalchemy.orm.relationship("Person", back_populates="vaccines")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'Vaccine... id: {self.id}, person name: {self.person.first_name} \
             lab: {self.dose_lab} date:{self.dose_date}'
+
+    def lab_name(self) -> str:
+        return {"name":self.dose_lab.name, "value": self.dose_lab.value}
+
 
 class Time_Entry(Base, SerializerMixin):
     __tablename__ = 'time_entries'
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
+    action = sqlalchemy.Column(sqlalchemy.Enum(enums.EntryTypes))
+    action_time = sqlalchemy.Column(sqlalchemy.DateTime)
+
     person_id = sqlalchemy.Column(
         sqlalchemy.Integer, sqlalchemy.ForeignKey('persons.id'))
     picture_id = sqlalchemy.Column(
         sqlalchemy.Integer, sqlalchemy.ForeignKey('pictures.id'))
-    action = sqlalchemy.Column(sqlalchemy.String(length=7))  # entrada o salida
-    # sea entrada o salida, tendra la hora de este
-    action_time = sqlalchemy.Column(sqlalchemy.DateTime)
+
+    serialize_rules = ('-picture','-person_id','-picture_id')
 
     person = sqlalchemy.orm.relationship(
         "Person", back_populates="time_entries")
     picture = sqlalchemy.orm.relationship(
         "Picture", back_populates="time_entry")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'Time Entry... id: {self.id}, person name: {self.person.first_name} \
             action: {self.action} time:{self.action_time}'
+
 
 class Appointment(Base, SerializerMixin):
     __tablename__ = 'appointments'
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
     start = sqlalchemy.Column(sqlalchemy.DateTime)
     end = sqlalchemy.Column(sqlalchemy.DateTime)
-    status = sqlalchemy.Column(sqlalchemy.Enum(enums.AppointmentStatus), default=enums.AppointmentStatus.PENDING)
+    status = sqlalchemy.Column(sqlalchemy.Enum(
+        enums.AppointmentStatus), default=enums.AppointmentStatus.PENDING)
 
     person_id = sqlalchemy.Column(
         sqlalchemy.Integer, sqlalchemy.ForeignKey('persons.id'))
     employee_id = sqlalchemy.Column(
         sqlalchemy.Integer, sqlalchemy.ForeignKey('employees.id'))
 
+    serialize_rules = ('-person','-status', 'person_id', 'employee_id', 'get_status')
+
     person = sqlalchemy.orm.relationship(
         "Person", back_populates="appointments")
     employee = sqlalchemy.orm.relationship(
         "Employee", back_populates="appointments")
+
+    def get_status(self) -> str:
+        return {"name":self.status.name, "value": self.status.value}
+
+
 
 class Comment(Base, SerializerMixin):
     __tablename__ = 'comments'
@@ -144,8 +177,26 @@ class Comment(Base, SerializerMixin):
     employee_id = sqlalchemy.Column(
         sqlalchemy.Integer, sqlalchemy.ForeignKey('employees.id'))
 
+    serialize_rules = ('-employee','-employee_id')
+
     employee = sqlalchemy.orm.relationship(
         "Employee", back_populates="comments")
+
+
+class Camera(Base, SerializerMixin):
+    __tablename__ = "cameras"
+    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
+    ip_address = sqlalchemy.Column(sqlalchemy.String(15))
+    user = sqlalchemy.Column(sqlalchemy.String(35))
+    password = sqlalchemy.Column(sqlalchemy.String(35))
+    route = sqlalchemy.Column(sqlalchemy.String(35))
+    entry_type = sqlalchemy.Column(sqlalchemy.Enum(enums.EntryTypes))
+    ask_mask = sqlalchemy.Column(sqlalchemy.Boolean, default=True)
+    ask_temp = sqlalchemy.Column(sqlalchemy.Boolean, default=True)
+
+    def connection_string(self):
+        return (0 if self.ip_address == '0.0.0.0' else
+                f'rtsp://{self.user}:{self.password}@{self.ip_address}:554{self.route}')
 
 
 if __name__ == '__main__':
@@ -153,5 +204,5 @@ if __name__ == '__main__':
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
 
-    from AccessControl.Data.admin_init import admin_init
-    admin_init()
+    import AccessControl.Data.api_inits as inits
+    inits.init()

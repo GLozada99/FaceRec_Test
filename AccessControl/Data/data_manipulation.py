@@ -56,8 +56,7 @@ def unprocess_picture(coded_data):
     '''
     Decodes data, works for pictures and face encodings
     '''
-    decoded_data = from_bytes(coded_data)
-    return decoded_data
+    return from_bytes(coded_data)
 
 
 def image_to_byte_array(image):
@@ -74,8 +73,7 @@ def img_bytes_to_base64(img_bytes):
     img.save(img_in_mem, format="png")
     img_in_mem.seek(0)
     bytes_img = img_in_mem.read()
-    img_b64 = base64.b64encode(bytes_img).decode('ascii')
-    return img_b64
+    return base64.b64encode(bytes_img).decode('ascii')
 
 
 def insert_picture_directory(path: str):
@@ -184,22 +182,18 @@ def get_pictures():
 
 
 def compute_hash(raw_string: str):
-    sha_signature = hashlib.sha256(raw_string.encode()).hexdigest()
-    return sha_signature
+    return hashlib.sha256(raw_string.encode()).hexdigest()
 
 
 def compare_hash(raw_string: str, hash_string: str):
-    result = compute_hash(raw_string) == hash_string
-    return result
+    return compute_hash(raw_string) == hash_string
 
 
 def has_available_appointment(person_id):
     appointments = crud.appointments_by_person(
         crud.get_entry(classes.Person, person_id))
-    result = False
-    for appointment in appointments:
-        if appointment.start <= datetime.now() and appointment.end >= datetime.now():
-            result = True
-            break
-
-    return result
+    return any(
+        appointment.start <= datetime.now()
+        and appointment.end >= datetime.now()
+        for appointment in appointments
+    )

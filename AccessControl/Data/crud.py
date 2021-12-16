@@ -14,61 +14,23 @@ def add_entry(entry):
     Entry must be a class object that derives from
     DeclarativeMeta class on sqlalchemy
     '''
-    # print('inicio', entry)
-    # if entry.__class__ == classes.Person:  # Spaghetti code
-    #     print('person')
-    #     person = person_by_ident_doc(entry.identification_document)
-    #     if person:
-    #         person.__dict__.update(entry.__dict__)
-    # elif entry.__class__ == classes.Employee:
-    #     person = person_by_ident_doc(entry.person.identification_document)[0]
-    #     print(person)
-    #     if person:
-    #         employee = get_entry(classes.Employee, person.id)
-    #         if employee:
-    #             employee.__dict__.update(entry.__dict__)
-    # else:
-    #     print('else')
     _session.add(entry)
     _session.commit()
     return True
 
 
-def get_entry(Class, id: int, inactive=False):
+def get_entry(Class, id: int):
     '''
     Returns entry in table of given class based on id.
-    If class uses soft delete, returns only if it's active or inactive flag is True
     '''
-    entry = _session.query(Class).get(id)
-
-    if hasattr(entry, 'active'):
-        if not entry.active:
-            entry = None
-    elif Class == classes.Employee:  # Not proud
-        entry = entry if _session.query(classes.Person).get(
-            id).active or inactive else None
-
-    return entry
+    return _session.query(Class).get(id)
 
 
 def get_entries(Class):
     '''
     Returns all entries in table of given class.
-    If class uses soft delete, returns only active entries
     '''
-    entry = _session.query(Class).get(1)
-    entries = None
-    if hasattr(entry, 'active'):
-        entries = _session.query(Class).filter_by(active=True)
-    elif Class == classes.Employee:  # this elif is awful, but I was desperate
-        person_entries = _session.query(classes.Person).filter_by(active=True)
-        person_ids = [person.id for person in person_entries]
-        entries = [employee for employee in _session.query(
-            Class).all() if employee.id in person_ids]
-    else:
-        entries = _session.query(Class).all()
-
-    return entries
+    return _session.query(Class).all()
 
 
 def _set_entry_status(entry, status: bool):
@@ -115,31 +77,44 @@ def update_entry_with_entry(Class, source, destination):
 
 
 def get_persons():
-    '''
-    Returns all persons who are not employees
-    '''
     return (_session.query(classes.Person).
-            filter(classes.Person.role == enums.PersonRole.PERSON).filter(classes.Person.active).all())
+            filter(classes.Person.role == enums.PersonRole.PERSON).
+            filter(classes.Person.active).all())
 
+def get_employees():
+    return (_session.query(classes.Employee).
+            join(classes.Person).filter(classes.Person.active).all())
+
+def get_person(id):
+    return (_session.query(classes.Person).
+            filter(classes.Person.role == enums.PersonRole.PERSON).
+            filter(classes.Person.active, classes.Person.id == id)).first()
+
+def get_employee(id):
+    return (_session.query(classes.Employee).
+            join(classes.Person).filter(
+                classes.Person.id == id, classes.Person.active)).first()
 
 def person_by_ident_doc(identification_document):
-    return _session.query(classes.Person).filter_by(identification_document=identification_document).all()
+    return _session.query(classes.Person).filter(
+        classes.Person.identification_document == identification_document).first()
 
 
 def vaccines_by_person(person):
-    return _session.query(classes.Vaccine).filter_by(person_id=person.id).all()
+    return _session.query(classes.Vaccine).filter(classes.Vaccine.person_id==person.id).all()
 
 
 def comments_by_employee(employee):
-    return reversed(_session.query(classes.Comment).filter_by(employee_id=employee.id).all())
+    return reversed(_session.query(classes.Comment).filter(
+        classes.Comment.employee_id==employee.id).all())
 
 
-def pictures_by_person(person):
-    return _session.query(classes.Picture).filter_by(person_id=person.id).all()
+def first_picture_person(person):
+    return _session.query(classes.Picture).filter(classes.Picture.person_id==person.id).first()
 
 
 def appointments_by_person(person):
-    return _session.query(classes.Appointment).filter_by(person_id=person.id).all()
+    return _session.query(classes.Appointment).filter(classes.Appointment.person_id==person.id).all()
 
 
 def get_all_pictures():

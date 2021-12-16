@@ -1,4 +1,5 @@
 import sys
+import os
 import time
 from datetime import datetime
 import numpy as np
@@ -13,30 +14,26 @@ import AccessControl.Data.data_manipulation as dm
 import AccessControl.Functions.matrix_functions as mx
 from tensorflow.keras.preprocessing.image import img_to_array
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
+from tensorflow.keras.models import load_model
+
 import asyncio
 
 
-def show_pic_from_array(picture_array):
-    '''
-    Shows picture given numpy array
-    '''
-    Image.fromarray(picture_array).show()
+def get_mask_face_net(face, model):
+    prototxtPath = os.path.sep.join(
+        [os.path.abspath(face), "deploy.prototxt"])
+    weightsPath = os.path.sep.join([os.path.abspath(face),
+                                    "res10_300x300_ssd_iter_140000.caffemodel"])
+    faceNet = cv2.dnn.readNet(prototxtPath, weightsPath)
+    # load the face mask detector model from disk
+    maskNet = load_model(os.path.abspath(model))
 
-
-def show_from_database():
-    '''
-    Shows all pictures from database
-    '''
-    pics = dm.get_pictures()
-    # list of tuples (person_id, face_enconding)
-    for pictures in pics:
-        _ = input('Presione enter')
-        show_pic_from_array(pictures)
+    return maskNet, faceNet
 
 
 def has_time_passed(time_since, interval):
     # returns true if interval of time has passed since a specific time
-    return True if (time.time() - time_since) > interval else False
+    return (time.time() - time_since) > interval
 
 
 def detect_and_predict_mask(frame, faceNet, maskNet):
@@ -56,7 +53,7 @@ def detect_and_predict_mask(frame, faceNet, maskNet):
     preds = []
 
     # loop over the detections
-    for i in range(0, detections.shape[2]):
+    for i in range(detections.shape[2]):
         # extract the confidence (i.e., probability) associated with
         # the detection
         confidence = detections[0, 0, i, 2]
@@ -88,7 +85,7 @@ def detect_and_predict_mask(frame, faceNet, maskNet):
             locs.append((startX, startY, endX, endY))
 
     # only make a predictions if at least one face was detected
-    if len(faces) > 0:
+    if faces:
         # for faster inference we'll make batch predictions on *all*
         # faces at the same time rather than one-by-one predictions
         # in the above `for` loop
@@ -108,14 +105,13 @@ async def has_mask(frame, faceNet, maskNet):
         # each pred is a tuple of probability of having and not having mask.
         # Only first face is taken
         mask, without_mask = preds[0]
-        has_mask = True if mask > without_mask else False
+        has_mask = mask > without_mask
     # True means it has mask, False means it doesn't
     # None means there's no face on the picture
     return has_mask
 
 
 async def face_recog(frame, encodings):
-    tolerance = 0.5
     rgb_frame = frame[:, :, ::-1]
     face_locations = face_recognition.face_locations(rgb_frame)
     unknown_face_encondings = face_recognition.face_encodings(
@@ -125,6 +121,7 @@ async def face_recog(frame, encodings):
     unknown_face_enconding = None
     if unknown_face_encondings:
         unknown_face_enconding = unknown_face_encondings[0]
+        tolerance = 0.5
         results = face_recognition.compare_faces(
             encodings, unknown_face_enconding, tolerance)
         face_distances = face_recognition.face_distance(
@@ -136,94 +133,62 @@ async def face_recog(frame, encodings):
     return (result, best_match_index, unknown_face_enconding, rgb_frame)
 
 
-def face_recog_file(picture_path, show_pictures=False):
-    '''
-    Applies face recognition to a picture given its path
-    Uses a database of previously known pictures
-    '''
-    # loading picture from file
-    picture_loaded = face_recognition.load_image_file(picture_path)
+async def temp_okay(client, acceptable_time, room_id):
+    data = await mx.matrix_get_messages(client, room_id)
+    good_value_flag = False
+    answer = None
+    temp = 0
+    time = 0
+    if data:
+        last_entry = data[-1]
+        try:
+            info, time, _ = last_entry
+            temp = float(info)
+            good_value_flag = True
+        except ValueError:
+            print('Ultima entrada no es un número')
 
-    # getting face locations of picture so that face encoding can be faster
-    face_locations = face_recognition.face_locations(picture_loaded)
-    unknown_face_encondings = face_recognition.face_encodings(
-        picture_loaded, face_locations)
+        if good_value_flag and not has_time_passed(time, acceptable_time):
+            temp_threshold = 38  # in degrees celcius
 
-    if unknown_face_encondings:
-        # analizing only principal face in picture
-        unknown_face_enconding = unknown_face_encondings[0]
-    else:
-        # exiting program if there are no faces on picture
-        print('No se ha detectado una cara')
-        sys.exit(1)
+            answer = temp < temp_threshold
 
-    # getting data of known pictures through database
-    # list of tuples (person_id, face_enconding)
-    pics = dm.get_pictures_encodings()
-    # pics = dm.get_pictures_encodings_by_type(classes.PictureClassification.ALL)
-    print(pics)
-    person_ids = []
-    encodings = []
-    pic_ids = []
-    for person_id, encoding, pic_id in pics:
-        person_ids.append(person_id)
-        encodings.append(encoding)
-        pic_ids.append(pic_id)
+        data.clear()
 
-    # comparing and finding out if there's a match
-    results = face_recognition.compare_faces(
-        encodings, unknown_face_enconding, 0.6)
-
-    face_distances = face_recognition.face_distance(
-        encodings, unknown_face_enconding)
-
-    best_match_index = np.argmin(face_distances)
-
-    if results[best_match_index]:
-        p_id = person_ids[best_match_index]
-        if p_id:
-            person = crud.get_entry(classes.Person, p_id)
-            print(f'Se reconoció a la persona {person}')
-        else:
-            print('No se reconoció a nadie')
-
-    if show_pictures:
-        # showing unknown image and its better match
-        pic_id = pic_ids[best_match_index]
-        pic = crud.get_entry(classes.Picture, pic_id)
-        if pic:
-            picture_array = dm.unprocess_picture(pic.picture_bytes)
-            show_pic_from_array(picture_array)
+    return (answer, temp)
 
 
-async def face_recog_live(faceNet, maskNet, camera_address, ask_mask, ask_temp, action):
-    # timestamp for last time since has_mask was called,
-    # to only call every 'MASK_DETECT_INTERVAL' seconds
+async def get_profile(client, room_id):
+    data = await mx.matrix_get_messages(client, room_id)
+    error = True
+    if data:
+        data = data[0]
+        try:
+            profile = enums.PictureClassification[data[0]]
+            error = False
+        except KeyError:
+            pass
+    if error:
+        profile = enums.PictureClassification(0)
+
+    return profile
+
+
+async def face_recog_live(faceNet, maskNet, camera):
     time_mask_detection = time.time()
-
-    # timestamp for last time compare_faces was called,
-    # to only call every 'FACE_RECOG_INTERVAL' seconds
     time_face_recognition = time.time()
-
-    # timestamp for last time temp_okay was called,
-    # to only call every 'TEMP_COMPROBATION_INTERVAL' seconds
     time_temp_comprobation = time.time()
 
-    # timestamp for mask being detected, to allow for a
-    # window in which mask_detection_flag will be true
     time_since_mask = time.time()
-
-    # timestamp for face being recognized, to allow for a
-    # window in which face_recognition_flag will be true
     time_since_face = time.time()
-
-    # maximum time since an acceptable temp was taken from the sensor
-    acceptable_temp_time = 20
 
     # timestamp for when person was welcomed (face and mask were approved)
     time_welcomed = time.time()
 
-    video_capture = cv2.VideoCapture(camera_address)  # starting camera
+    # maximum time since an acceptable temp was taken from the sensor
+    acceptable_temp_time = 20
+
+    video_capture = cv2.VideoCapture(camera.connection_string())  # starting camera
 
     server = config('MATRIX_SERVER')
     user = config('MATRIX_USER')
@@ -240,19 +205,16 @@ async def face_recog_live(faceNet, maskNet, camera_address, ask_mask, ask_temp, 
     door_room_id = await mx.matrix_get_room_id(client, door_room_name)
     profile_room_id = await mx.matrix_get_room_id(client, profile_room_name)
 
-    mask_detection_flag = False  # indicates a mask has been detected
-    face_recognition_flag = False  # indicates a face has been recognized
-    # indicates temperature has been comprobated and aprooved
+    mask_detection_flag = False
+    face_recognition_flag = False
     temp_comprobation_flag = False
 
-    # time interval in seconds: TIIS
-    MASK_DETECT_INTERVAL = 5  # TIIS for calling mask detection function
-    FACE_RECOG_INTERVAL = 8  # TIIS for calling face recognition function
-    TEMP_COMPROBATION_INTERVAL = 10  # TIIS for calling temp comprobation function
-    TIME_START_AGAIN = 13  # TIIS for start again after opening a door
-    WINDOW_TIME_SINCE = 30  # TIIS a person has to remove it's mask
-    # after it has been detected for face recog
-    # or time it has to put a mask on after it's face has been recognized
+    MASK_DETECT_INTERVAL = 5
+    FACE_RECOG_INTERVAL = 8
+    TEMP_COMPROBATION_INTERVAL = 10
+    TIME_START_AGAIN = 13
+    WINDOW_TIME_SINCE = 30
+
     messages = []
     message_task = None
     profile = await get_profile(client, profile_room_id)
@@ -264,8 +226,9 @@ async def face_recog_live(faceNet, maskNet, camera_address, ask_mask, ask_temp, 
     for person_id, encoding, _ in pics:
         person_ids.append(person_id)
         encodings.append(encoding)
-    print(person_ids)
+    print(profile)
     while True:
+        time.sleep(0.02)
         _, frame = video_capture.read()  # getting frame
         cv2.imshow('Video', frame)  # showing video
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -298,7 +261,6 @@ async def face_recog_live(faceNet, maskNet, camera_address, ask_mask, ask_temp, 
                 has_mask(frame, faceNet, maskNet))
             mask = await has_mask_task
             time_mask_detection = time.time()
-
         if mask is None:  # if no face was detected, get another frame
             continue
 
@@ -310,7 +272,6 @@ async def face_recog_live(faceNet, maskNet, camera_address, ask_mask, ask_temp, 
             if not face_recognition_flag:
                 # No face recog flag means that's the only thing left for welcoming.
                 # Because there's a mask, the person is asked to remove it for the face_recognition to begin
-                print('Se ha detectado mascarilla. Remuevala momentaneamente.')
                 messages.append('1MaskWasDetected')
 
         # Only if there's no mask, a face hasn't been recognized
@@ -326,8 +287,7 @@ async def face_recog_live(faceNet, maskNet, camera_address, ask_mask, ask_temp, 
                     "%Y-%m-%d %H:%M:%S", time.localtime())
                 person = crud.get_entry(classes.Person, p_id)
 
-                print(
-                    f'Se reconoció a la persona {person}, en la fecha {now}')
+                print(f'{person}, en la fecha {now}')
                 messages.append('2PersonWasRecognized')
 
                 face_recognition_flag = True
@@ -335,33 +295,28 @@ async def face_recog_live(faceNet, maskNet, camera_address, ask_mask, ask_temp, 
                 # dm.insert_picture_discovered(person_id,
                 # rgb_frame, unknown_face_enconding)
                 if mask_detection_flag:
-                    print('Recuerde subir su mascarilla')
                     messages.append('3PutMaskOn')
-                elif ask_mask:
-                    print('No se ha detectado mascarilla. Póngasela')
+                elif camera.ask_mask:
                     messages.append('4MaskWasNotDetected')
 
             else:
-                print('Persona desconocida en la puerta')
                 messages.append('6UnknownPerson')
         # After a face has been recognized and a mask has been detected, the door will open if temperature is good
         # and all control variables will reset to original state
 
-        if has_time_passed(time_temp_comprobation, TEMP_COMPROBATION_INTERVAL) and ask_mask:
+        if has_time_passed(time_temp_comprobation, TEMP_COMPROBATION_INTERVAL) and camera.ask_mask:
             temp_okay_task = asyncio.create_task(
                 temp_okay(client, acceptable_temp_time, temper_room_id))
             temp_comprobation_flag, _ = await temp_okay_task
             time_temp_comprobation = time.time()
 
             if temp_comprobation_flag is False:
-                messages.append('7TempIsGreaters')
-                print('Temperatura superior al rango designado')
+                messages.append('7TempIsGreater')
             elif temp_comprobation_flag is None:
-                print('Por favor, tome su temperatura en el sensor')
                 messages.append('8TakeTempSens')
 
         print(face_recognition_flag, mask_detection_flag, temp_comprobation_flag)
-        if face_recognition_flag and (mask_detection_flag or not ask_mask) and (temp_comprobation_flag or not ask_temp):
+        if face_recognition_flag and (mask_detection_flag or not camera.ask_mask) and (temp_comprobation_flag or not camera.ask_temp):
             open_door = True
             if profile == enums.PictureClassification.ACCEPTED_APPOINTMENTS:
                 available_appointment = dm.has_available_appointment(p_id)
@@ -370,7 +325,7 @@ async def face_recog_live(faceNet, maskNet, camera_address, ask_mask, ask_temp, 
                 await mx.matrix_send_message(client, door_room_id, '1')
                 messages.append('5Welcome')
                 dm.insert_picture_discovered(
-                    p_id, rgb_frame, unknown_face_encoding, action)
+                    p_id, rgb_frame, unknown_face_encoding, camera.entry_type.name)
                 mask_detection_flag = False
                 face_recognition_flag = False
                 temp_comprobation_flag = False
@@ -385,50 +340,6 @@ async def face_recog_live(faceNet, maskNet, camera_address, ask_mask, ask_temp, 
             else:
                 messages.append('9Appointment')
 
-            # open door
-    # if message_task is not None:
-    #     await message_task
+
     video_capture.release()
     cv2.destroyAllWindows()
-
-
-async def temp_okay(client, acceptable_time, room_id):
-    temp_threshold = 38  # in degrees celcius
-
-    data = await mx.matrix_get_messages(client, room_id)
-    good_value_flag = False
-    answer = None
-    temp = 0
-    time = 0
-    if data:
-        last_entry = data[-1]
-        try:
-            info, time, _ = last_entry
-            temp = float(info)
-            good_value_flag = True
-        except ValueError:
-            print('Ultima entrada no es un número')
-
-        if good_value_flag:
-            if not has_time_passed(time, acceptable_time):
-                answer = temp < temp_threshold
-
-        data.clear()
-
-    return (answer, temp)
-
-
-async def get_profile(client, room_id):
-    data = await mx.matrix_get_messages(client, room_id)
-    error = True
-    if data:
-        data = data[0]
-        try:
-            profile = enums.PictureClassification[data[0]]
-            error = False
-        except KeyError:
-            pass
-    if error:
-        profile = enums.PictureClassification(0)
-
-    return profile

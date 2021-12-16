@@ -34,3 +34,9 @@ class VaccineLab(Enum):
 class SpeakerLanguages(Enum):
     ENGLISH = 0
     SPANISH = 1
+
+
+class EntryTypes(Enum):
+    ENTRY = 0
+    EXIT = 1
+    PC = 2
