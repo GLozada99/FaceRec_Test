@@ -57,21 +57,21 @@ def list_persons():
     msg = '' if len(json_data) else 'No entries'
     return jsonify(result=json_data, msg=msg), HTTPStatus.OK
 
-@app.route('/employees', methods=['GET'])
+@app.route('/employees', methods=['GET']) #
 def list_employees():
     '''Returns all employees'''
     json_data = [flatten(employee.to_dict()) for employee in crud.get_employees()]
     msg = '' if len(json_data) else 'No entries'
     return jsonify(result=json_data, msg=msg), HTTPStatus.OK
 
-@app.route('/appointments', methods=['GET'])
+@app.route('/appointments', methods=['GET']) #
 def list_appointments():
     '''Returns all appointments'''
     json_data = [flatten(appointment.to_dict()) for appointment in crud.get_entries(classes.Appointment)]
     msg = '' if len(json_data) else 'No entries'
     return jsonify(result=json_data, msg=msg), HTTPStatus.OK
 
-@app.route('/entries', methods=['GET'])
+@app.route('/entries', methods=['GET']) #
 # @jwt_required()
 def list_time_entries():
     '''Returns a list of all the entries'''
@@ -81,7 +81,7 @@ def list_time_entries():
     msg = '' if len(json_data) else 'No entries'
     return jsonify(result=json_data, msg=msg), HTTPStatus.OK
 
-@app.route('/current-employee', methods=['GET'])
+@app.route('/current-employee', methods=['GET']) #
 # @jwt_required()
 def auth_employee_info():
     '''Returns the picture, and comment and vaccine list of the current employee'''
@@ -176,7 +176,7 @@ def person_by_identdoc(identification_doc):
 
     return jsonify(json_data)
 
-@app.route('/appointment-status', methods=['PUT'])
+@app.route('/appointment-status', methods=['PATCH'])
 def set_appointment_status():
     '''Sets the status of a specified appointment'''
     data = request.get_json(force=True)
@@ -193,7 +193,7 @@ def set_appointment_status():
             msg = 'No appointment with that ID'
     return jsonify(msg=msg), status
 
-@app.route('/newPassword', methods=['PUT'])
+@app.route('/newPassword', methods=['PATCH'])
 def set_first_password():
     '''
     Sets a first password for an account given the id
@@ -472,7 +472,7 @@ def add_comment():
     return jsonify(msg=msg), status
 
 
-@app.route('/set-config', methods=['PUT'])
+@app.route('/set-config', methods=['PATCH'])
 # @jwt_required()
 async def set_config():
     server = config('MATRIX_SERVER')
