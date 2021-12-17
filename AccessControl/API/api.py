@@ -193,7 +193,7 @@ def set_appointment_status():
             msg = 'No appointment with that ID'
     return jsonify(msg=msg), status
 
-@app.route('/newPassword', methods=['PATCH'])
+@app.route('/new-password', methods=['PATCH'])
 def set_first_password():
     '''
     Sets a first password for an account given the id
