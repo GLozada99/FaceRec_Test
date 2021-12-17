@@ -49,7 +49,7 @@ def _set_appointment_status(appointment, status):
         appointment.appointment_end = datetime.now()
     crud.commit()
 
-@app.route('/persons', methods=['GET'])
+@app.route('/persons', methods=['GET']) #
 # @jwt_required()
 def list_persons():
     '''Returns all persons who are not employees'''
@@ -57,21 +57,21 @@ def list_persons():
     msg = '' if len(json_data) else 'No entries'
     return jsonify(result=json_data, msg=msg), HTTPStatus.OK
 
-@app.route('/employees', methods=['GET'])
+@app.route('/employees', methods=['GET']) #
 def list_employees():
     '''Returns all employees'''
     json_data = [flatten(employee.to_dict()) for employee in crud.get_employees()]
     msg = '' if len(json_data) else 'No entries'
     return jsonify(result=json_data, msg=msg), HTTPStatus.OK
 
-@app.route('/appointments', methods=['GET'])
+@app.route('/appointments', methods=['GET']) #
 def list_appointments():
     '''Returns all appointments'''
     json_data = [flatten(appointment.to_dict()) for appointment in crud.get_entries(classes.Appointment)]
     msg = '' if len(json_data) else 'No entries'
     return jsonify(result=json_data, msg=msg), HTTPStatus.OK
 
-@app.route('/entries', methods=['GET'])
+@app.route('/entries', methods=['GET']) #
 # @jwt_required()
 def list_time_entries():
     '''Returns a list of all the entries'''
@@ -81,7 +81,7 @@ def list_time_entries():
     msg = '' if len(json_data) else 'No entries'
     return jsonify(result=json_data, msg=msg), HTTPStatus.OK
 
-@app.route('/current-employee', methods=['GET'])
+@app.route('/current-employee', methods=['GET']) #
 # @jwt_required()
 def auth_employee_info():
     '''Returns the picture, and comment and vaccine list of the current employee'''
@@ -96,7 +96,7 @@ def auth_employee_info():
 
     return jsonify(result=json_data), HTTPStatus.OK
 
-@app.route('/person/<id>', methods=['GET'])
+@app.route('/person/<id>', methods=['GET']) #
 # @jwt_required()
 def get_person_by_id(id):
     '''Returns the picture and vaccine list of a specific person given it's ID'''
@@ -145,7 +145,7 @@ def get_appointment_by_id(id):
     if appointment:
         person = appointment.person
         json_data['picture'] = _get_person_picture(person)
-        json_data['person_info'] = flatten(person.to_dict())
+        json_data['person'] = flatten(person.to_dict())
         json_data['vaccines'] = [flatten(vaccine.to_dict()) for vaccine in crud.vaccines_by_person(person)]
         msg = ''
         status = HTTPStatus.OK
@@ -165,21 +165,8 @@ def get_picture_entry_by_id(id):
         status = HTTPStatus.OK
     return jsonify(result=json_data, msg=msg), status
 
-@app.route('/person-id/<identification_doc>', methods=['GET'])
-def get_person_id_by_identdoc(identification_doc):
-    '''Returns id person given the identification_document number'''
-    person = crud.person_by_ident_doc(identification_doc)
-    msg = 'No person with this identification document'
-    status = HTTPStatus.BAD_REQUEST
-    json_data = {}
-    if person:
-        json_data['person_id'] = person.id
-        msg = ''
-        status = HTTPStatus.OK
-    return jsonify(result=json_data, msg=msg), status
-
-@app.route('/vaccines/<identification_doc>', methods=['GET'])
-def get_vaccines_by_identdoc(identification_doc):
+@app.route('/person/<identification_doc>', methods=['GET'])
+def person_by_identdoc(identification_doc):
     '''Returns list of all the vaccines of a specific person given the identification_document number'''
     person = crud.person_by_ident_doc(identification_doc)
     json_data = {}
@@ -189,7 +176,7 @@ def get_vaccines_by_identdoc(identification_doc):
 
     return jsonify(json_data)
 
-@app.route('/appointment-status', methods=['PUT'])
+@app.route('/appointment-status', methods=['PATCH'])
 def set_appointment_status():
     '''Sets the status of a specified appointment'''
     data = request.get_json(force=True)
@@ -206,7 +193,7 @@ def set_appointment_status():
             msg = 'No appointment with that ID'
     return jsonify(msg=msg), status
 
-@app.route('/newPassword', methods=['PUT'])
+@app.route('/new-password', methods=['PATCH'])
 def set_first_password():
     '''
     Sets a first password for an account given the id
@@ -485,7 +472,7 @@ def add_comment():
     return jsonify(msg=msg), status
 
 
-@app.route('/set-config', methods=['PUT'])
+@app.route('/set-config', methods=['PATCH'])
 # @jwt_required()
 async def set_config():
     server = config('MATRIX_SERVER')
