@@ -521,8 +521,14 @@ async def set_config():
 
 if __name__ == '__main__':
     import sys
+    import argparse
+    ap = argparse.ArgumentParser()
 
-    if sys.argv[1] == '--debug':
+    ap.add_argument('--debug', action='store_true')
+    args = vars(ap.parse_args())
+
+
+    if args['debug']:
         app.run(host='0.0.0.0', debug=True)
     else:
         from gevent.pywsgi import WSGIServer
