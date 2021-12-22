@@ -38,7 +38,7 @@ class Person(Base, SerializerMixin):
 
     serialize_rules = ('-employee','-pictures',
                        '-appointments','-vaccines',
-                       '-time_entries','get_role', '-role')
+                       '-time_entries','get_role', '-role','full_name')
 
     employee = sqlalchemy.orm.relationship(
         "Employee", back_populates="person")
@@ -54,6 +54,9 @@ class Person(Base, SerializerMixin):
 
     def get_role(self) -> str:
         return {"name":self.role.name, "value": self.role.value}
+
+    def full_name(self) ->str:
+        return f'{self.first_name} {self.last_name}'
 
 
 class Employee(Base, SerializerMixin):
@@ -109,7 +112,7 @@ class Vaccine(Base, SerializerMixin):
     person_id = sqlalchemy.Column(
         sqlalchemy.Integer, sqlalchemy.ForeignKey('persons.id'))
 
-    serialize_rules = ('-person', 'lab_name', '-dose_lab', '-person_id')
+    serialize_rules = ('-person', 'lab', '-dose_lab', '-person_id')
 
     person = sqlalchemy.orm.relationship("Person", back_populates="vaccines")
 
@@ -117,7 +120,7 @@ class Vaccine(Base, SerializerMixin):
         return f'Vaccine... id: {self.id}, person name: {self.person.first_name} \
             lab: {self.dose_lab} date:{self.dose_date}'
 
-    def lab_name(self) -> str:
+    def lab(self) -> str:
         return {"name":self.dose_lab.name, "value": self.dose_lab.value}
 
 

@@ -50,7 +50,7 @@ def _set_appointment_status(appointment, status):
     crud.commit()
 
 @app.route('/persons', methods=['GET']) #
-# @jwt_required()
+@jwt_required()
 def list_persons():
     '''Returns all persons who are not employees'''
     json_data = [flatten(person.to_dict()) for person in crud.get_persons()]
@@ -65,6 +65,7 @@ def list_employees():
     return jsonify(result=json_data, msg=msg), HTTPStatus.OK
 
 @app.route('/appointments', methods=['GET']) #
+@jwt_required()
 def list_appointments():
     '''Returns all appointments'''
     json_data = [flatten(appointment.to_dict()) for appointment in crud.get_entries(classes.Appointment)]
@@ -72,7 +73,7 @@ def list_appointments():
     return jsonify(result=json_data, msg=msg), HTTPStatus.OK
 
 @app.route('/entries', methods=['GET']) #
-# @jwt_required()
+@jwt_required()
 def list_time_entries():
     '''Returns a list of all the entries'''
     json_data = [flatten(entry.to_dict(
@@ -82,7 +83,7 @@ def list_time_entries():
     return jsonify(result=json_data, msg=msg), HTTPStatus.OK
 
 @app.route('/current-employee', methods=['GET']) #
-# @jwt_required()
+@jwt_required()
 def auth_employee_info():
     '''Returns the picture, and comment and vaccine list of the current employee'''
     id = get_jwt_identity()
@@ -97,7 +98,7 @@ def auth_employee_info():
     return jsonify(result=json_data), HTTPStatus.OK
 
 @app.route('/person/<id>', methods=['GET']) #
-# @jwt_required()
+@jwt_required()
 def get_person_by_id(id):
     '''Returns the picture and vaccine list of a specific person given it's ID'''
     person = crud.get_person(int(id))
@@ -113,7 +114,7 @@ def get_person_by_id(id):
     return jsonify(person=json_data, msg=msg), status
 
 @app.route('/employee/<id>', methods=['GET', 'DELETE'])
-# @jwt_required()
+@jwt_required()
 def employee_methods(id):
     '''
     GET: Returns the picture, vaccine list and comment list of a specific employe given it's ID
@@ -152,11 +153,11 @@ def get_appointment_by_id(id):
     return jsonify(result=json_data, msg=msg), status
 
 @app.route('/entry/<id>', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 def get_picture_entry_by_id(id):
     '''Returns the picture of a specific entry given it's ID'''
     entry = crud.get_entry(classes.Time_Entry, int(id))
-    msg = 'No person with this identification document'
+    msg = 'No entry with this ID'
     status = HTTPStatus.BAD_REQUEST
     json_data = {}
     if entry:
@@ -165,18 +166,23 @@ def get_picture_entry_by_id(id):
         status = HTTPStatus.OK
     return jsonify(result=json_data, msg=msg), status
 
-@app.route('/person/<identification_doc>', methods=['GET'])
+@app.route('/person-doc/<identification_doc>', methods=['GET'])
 def person_by_identdoc(identification_doc):
     '''Returns list of all the vaccines of a specific person given the identification_document number'''
     person = crud.person_by_ident_doc(identification_doc)
+    msg = 'No person with this identification document'
+    status = HTTPStatus.BAD_REQUEST
     json_data = {}
     if person:
-        json_data['person'] = flatten(person.to_dict())
+        json_data['person'] = [flatten(person.to_dict())]
         json_data['vaccines'] = [flatten(vaccine.to_dict()) for vaccine in crud.vaccines_by_person(person)]
+        msg = ''
+        status = HTTPStatus.OK
 
-    return jsonify(json_data)
+    return jsonify(result=json_data, msg=msg), status
 
 @app.route('/appointment-status', methods=['PATCH'])
+@jwt_required()
 def set_appointment_status():
     '''Sets the status of a specified appointment'''
     data = request.get_json(force=True)
@@ -238,7 +244,7 @@ def set_first_password():
     return jsonify(msg=msg), status
 
 @app.route('/employee', methods=['POST'])
-# @jwt_required()
+@jwt_required()
 def add_employee():
     '''Receives employee data and inserts it to the database'''
     data = request.get_json(force=True)
@@ -274,7 +280,7 @@ def add_employee():
     return jsonify(msg=msg), status
 
 @app.route('/employees', methods=['POST'])
-# @jwt_required()
+@jwt_required()
 def regist_bulk():
     '''Receives a CSV file (on base64 encoding) containing
     multiple employees and inserts them into the database'''
@@ -361,7 +367,6 @@ def new_appointment():
         status = HTTPStatus.OK
     return jsonify(msg=msg), status
 
-
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json(force=True)
@@ -388,7 +393,7 @@ def login():
     return jsonify(msg=msg, access_token=access_token), status
 
 @app.route('/open-door', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 async def openDoor():
     time_out = 10
     server = config('MATRIX_SERVER')
@@ -410,9 +415,8 @@ async def openDoor():
 
     return jsonify(msg=msg), code
 
-
 @app.route('/user', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 def protected():
     # Access the identity of the current user with get_jwt_identity
     current_user_id = get_jwt_identity()
@@ -425,9 +429,8 @@ def protected():
 
     return jsonify(result={'fullname': fullname, 'role': role, 'id': current_user_id}), status
 
-
 @app.route('/vaccine', methods=['POST'])
-# @jwt_required()
+@jwt_required()
 def add_vaccine():
     data = request.get_json(force=True)
     msg = 'Incorrect Data'
@@ -451,9 +454,8 @@ def add_vaccine():
 
     return jsonify(msg=msg), status
 
-
 @app.route('/comment', methods=['POST'])
-# @jwt_required()
+@jwt_required()
 def add_comment():
     data = request.get_json(force=True)
     msg = 'Incorrect Data'
@@ -471,9 +473,8 @@ def add_comment():
 
     return jsonify(msg=msg), status
 
-
 @app.route('/set-config', methods=['PATCH'])
-# @jwt_required()
+@jwt_required()
 async def set_config():
     server = config('MATRIX_SERVER')
     user = config('MATRIX_USER')
@@ -519,4 +520,11 @@ async def set_config():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True)
+    import sys
+
+    if sys.argv[1] == '--debug':
+        app.run(host='0.0.0.0', debug=True)
+    else:
+        from gevent.pywsgi import WSGIServer
+        http_server = WSGIServer(('', 5000), app)
+        http_server.serve_forever()
