@@ -44,9 +44,9 @@ def _get_employee_comments(employee):
     return [flatten(comment.to_dict()) for comment in crud.comments_by_employee(employee)]
 
 def _set_appointment_status(appointment, status):
-    appointment.status = appointment_status
-    if appointment_status == enums.AppointmentStatus.FINALIZED:
-        appointment.appointment_end = datetime.now()
+    appointment.status = status
+    if status in {enums.AppointmentStatus.FINALIZED, enums.AppointmentStatus.REJECTED}:
+        appointment.end = datetime.now()
     crud.commit()
 
 @app.route('/persons', methods=['GET']) #
@@ -336,7 +336,6 @@ def first_appointment():
 
             employee_id = int(data['employee_id'])
             appointment = gn.generate_appointment(data, employee_id, person)
-
             if picture:
                 crud.add_entry(appointment)
                 crud.add_entry(picture)
@@ -361,7 +360,7 @@ def new_appointment():
     msg = 'No correct data'
     status = HTTPStatus.BAD_REQUEST
     if data:
-        appointment = gn.generate_appointment(data, int(data['employee_id']), crud.get_person(int(data['person_id'])))
+        appointment = gn.generate_appointment(data, int(data['employee_id']), crud.get_all(int(data['person_id'])))
         crud.add_entry(appointment)
         msg = 'Appointment set successfully'
         status = HTTPStatus.OK
@@ -490,14 +489,12 @@ async def set_config():
     if data:
         language = enums.SpeakerLanguages(int(data['language'])).name
         profile = enums.PictureClassification(int(data['profile'])).name
-        print(server, user, password, device_id,
-              lang_room_name, profile_room_name)
+
         time_out = 20
 
         try:
             client = await asyncio.wait_for(
                 mx.matrix_login(server, user, password, device_id), time_out)
-            print(client)
 
             lang_room_id = await asyncio.wait_for(
                 mx.matrix_get_room_id(client, lang_room_name), time_out)

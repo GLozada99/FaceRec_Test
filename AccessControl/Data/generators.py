@@ -127,7 +127,7 @@ def generate_appointment(data, employee_id, person):
     full_date = f'{date} {time}:00'
     appointment_start = datetime.strptime(
         full_date, '%Y-%m-%d %H:%M:%S')
-
+    print(person)
     return classes.Appointment(
         start=appointment_start,
         person=person, employee=employee)

@@ -90,6 +90,10 @@ def get_person(id):
             filter(classes.Person.role == enums.PersonRole.PERSON).
             filter(classes.Person.active, classes.Person.id == id)).first()
 
+def get_all(id):
+    return (_session.query(classes.Person).
+            filter(classes.Person.active, classes.Person.id == id)).first()
+
 def get_employee(id):
     return (_session.query(classes.Employee).
             join(classes.Person).filter(
