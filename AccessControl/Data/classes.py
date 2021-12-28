@@ -67,8 +67,8 @@ class Employee(Base, SerializerMixin):
     position = sqlalchemy.Column(sqlalchemy.String(length=30))
     birth_date = sqlalchemy.Column(sqlalchemy.Date)
     email = sqlalchemy.Column(sqlalchemy.String(length=30))
-
     start_date = sqlalchemy.Column(sqlalchemy.Date)
+    hourly_wage = sqlalchemy.Column(sqlalchemy.Float)
 
     serialize_rules = ('-person.employee','-appointments','-comments', '-password')
 
@@ -207,5 +207,5 @@ if __name__ == '__main__':
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
 
-    import AccessControl.Data.api_inits as inits
+    import AccessControl.Data.inits as inits
     inits.init()

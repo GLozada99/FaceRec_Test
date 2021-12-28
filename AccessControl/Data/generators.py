@@ -89,6 +89,7 @@ def generate_employee(data, person, existent):
     start_date = data['start_date']
     email = data['email']
     birth_date = data['birth_date']
+    hourly_wage = data['hourly_wage']
     password = data.get('password', '')
     password = dm.compute_hash(password) if password else password
     if existent:
@@ -99,10 +100,11 @@ def generate_employee(data, person, existent):
         employee.position = position
         employee.start_date = start_date
         employee.password = password
+        employee.hourly_wage = hourly_wage
     else:
         employee = classes.Employee(id=person.id, position=position, birth_date=birth_date,
                                     email=email, start_date=start_date, person=person,
-                                    password=password)
+                                    password=password, hourly_wage=hourly_wage)
 
     return employee
 
@@ -127,7 +129,6 @@ def generate_appointment(data, employee_id, person):
     full_date = f'{date} {time}:00'
     appointment_start = datetime.strptime(
         full_date, '%Y-%m-%d %H:%M:%S')
-    print(person)
     return classes.Appointment(
         start=appointment_start,
         person=person, employee=employee)
