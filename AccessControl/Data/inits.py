@@ -7,6 +7,7 @@ import AccessControl.Data.data_manipulation as dm
 import AccessControl.Data.classes as classes
 import AccessControl.Data.generators as gn
 import AccessControl.Data.enums as enums
+import base64
 
 from decouple import config
 
@@ -57,34 +58,35 @@ def camera_init():
                 ask_mask=ask_mask, ask_temp=ask_temp)
             crud.add_entry(camera)
 
-def employee_init():
-    with open('./CSVs/employees.csv') as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            requests.post('http://localhost:5000/employee', json=row, headers={'Authorization': auth})
 
-def person_init():
-    with open('./CSVs/persons.csv') as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            requests.post('http://localhost:5000/person', json=row, headers={'Authorization': auth})
+def employees_init():
+    with open('./CSVs/employees.csv','rb') as file:
+        data = file.read()
+    base64_doc = base64.b64encode(data).decode('utf-8')
+    requests.post('http://localhost:5000/employees', json={"base64_doc": base64_doc}, headers={'Authorization': f'Bearer {auth}'})
+
 
 def appointment_init():
-    with open('./CSVs/persons.csv') as file:
+    with open('./CSVs/appointments.csv') as file:
         reader = csv.DictReader(file)
         for row in reader:
-            requests.post('http://localhost:5000/first-appointment', json=row, headers={'Authorization': auth})
+            requests.post('http://localhost:5000/first-appointment', json=row)
 
 def init():
     try:
+        print('camera...')
         camera_init()
+        print('admin...')
         emp_id, password = admin_init()
+        print('login...')
         response = requests.post('http://localhost:5000/login', json={'id': emp_id, 'password': password})
 
         global auth
         auth = response.json()['access_token']
 
-        employee_init()
+        print('employee...')
+        employees_init()
+        print('appointment...')
         appointment_init()
     except Exception as e:
         traceback.print_exc()
