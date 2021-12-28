@@ -189,6 +189,6 @@ def compare_hash(raw_string: str, hash_string: str):
 
 
 def has_available_appointment(person_id):
-    appointments = crud.appointments_by_person_time(
+    appointment = crud.appointments_by_person_time(
         crud.get_entry(classes.Person, person_id))
-    return (bool(appointments), appointments[0].id) if appointments else (False, 0)
+    return (bool(appointment), appointment.id) if appointments else (False, 0)
