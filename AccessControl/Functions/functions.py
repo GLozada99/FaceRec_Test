@@ -15,7 +15,7 @@ import AccessControl.Functions.matrix_functions as mx
 from tensorflow.keras.preprocessing.image import img_to_array
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 from tensorflow.keras.models import load_model
-
+from AccessControl.API.api import _set_appointment_status
 import asyncio
 
 
@@ -226,7 +226,6 @@ async def face_recog_live(faceNet, maskNet, camera):
     for person_id, encoding, _ in pics:
         person_ids.append(person_id)
         encodings.append(encoding)
-    print(profile)
     while True:
         time.sleep(0.02)
         _, frame = video_capture.read()  # getting frame
@@ -304,7 +303,7 @@ async def face_recog_live(faceNet, maskNet, camera):
         # After a face has been recognized and a mask has been detected, the door will open if temperature is good
         # and all control variables will reset to original state
 
-        if has_time_passed(time_temp_comprobation, TEMP_COMPROBATION_INTERVAL) and camera.ask_mask:
+        if has_time_passed(time_temp_comprobation, TEMP_COMPROBATION_INTERVAL) and camera.ask_temp:
             temp_okay_task = asyncio.create_task(
                 temp_okay(client, acceptable_temp_time, temper_room_id))
             temp_comprobation_flag, _ = await temp_okay_task
@@ -319,8 +318,10 @@ async def face_recog_live(faceNet, maskNet, camera):
         if face_recognition_flag and (mask_detection_flag or not camera.ask_mask) and (temp_comprobation_flag or not camera.ask_temp):
             open_door = True
             if profile == enums.PictureClassification.ACCEPTED_APPOINTMENTS:
-                available_appointment = dm.has_available_appointment(p_id)
-                open_door = available_appointment
+                open_door, available_appointment = dm.has_available_appointment(p_id)
+                if open_door:
+                    status = enums.AppointmentStatus.ONGOING if camera.entry_type == enums.EntryTypes.ENTRY else enums.AppointmentStatus.FINALIZED
+                    _set_appointment_status(crud.get_entry(classes.Appointment(), available_appointment), status)
             if open_door:
                 await mx.matrix_send_message(client, door_room_id, '1')
                 messages.append('5Welcome')
@@ -336,7 +337,6 @@ async def face_recog_live(faceNet, maskNet, camera):
                 time_since_mask = time.time()
                 time_since_face = time.time()
                 time_welcomed = time.time()
-                print('Bienvenido')
             else:
                 messages.append('9Appointment')
 

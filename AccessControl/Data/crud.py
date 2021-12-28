@@ -2,6 +2,7 @@ import AccessControl.Data.classes as classes
 import AccessControl.Data.enums as enums
 import sqlalchemy
 import time
+import datetime
 
 Session = sqlalchemy.orm.sessionmaker()
 Session.configure(bind=classes.engine)
@@ -119,6 +120,11 @@ def first_picture_person(person):
 
 def appointments_by_person(person):
     return _session.query(classes.Appointment).filter(classes.Appointment.person_id==person.id).all()
+
+def appointments_by_person_time(person):
+    appointments = _session.query(classes.Appointment).filter(classes.Appointment.person_id==person.id).all()
+    return [appointment for appointment in appointmentments if ((appointment.start + datetime.timedelta(hours=1)) >= datetime.now())]
+
 
 
 def get_all_pictures():
