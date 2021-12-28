@@ -276,7 +276,6 @@ def add_employee():
                 status = HTTPStatus.OK
             else:
                 msg = 'No correct picture'
-
     return jsonify(msg=msg), status
 
 @app.route('/employees', methods=['POST'])
@@ -305,7 +304,6 @@ def regist_bulk():
                 response = requests.post(
                     'http://localhost:5000/employee', json=row,
                     headers={'Authorization': request.headers['Authorization']})
-
                 statuses.add(response.status_code)
             if statuses.intersection({HTTPStatus.BAD_REQUEST, HTTPStatus.NOT_ACCEPTABLE}):
                 msg = 'There was a problem importing employees, \
@@ -346,7 +344,6 @@ def first_appointment():
             else:
                 msg = 'No correct picture'
         except Exception as e:
-            print(e)
             msg = 'Error setting appointment'
 
     return jsonify(msg=msg), status
