@@ -138,17 +138,17 @@ async def temp_okay(client, acceptable_time, room_id):
     good_value_flag = False
     answer = None
     temp = 0
-    time = 0
+    timestamp = 0
     if data:
         last_entry = data[-1]
         try:
-            info, time, _ = last_entry
+            info, timestamp, _ = last_entry
             temp = float(info)
             good_value_flag = True
         except ValueError:
             print('Ultima entrada no es un número')
 
-        if good_value_flag and not has_time_passed(time, acceptable_time):
+        if good_value_flag and not has_time_passed(timestamp, acceptable_time):
             temp_threshold = 38  # in degrees celcius
 
             answer = temp < temp_threshold
@@ -186,7 +186,7 @@ async def face_recog_live(faceNet, maskNet, camera):
     time_welcomed = time.time()
 
     # maximum time since an acceptable temp was taken from the sensor
-    acceptable_temp_time = 20
+    acceptable_temp_time = 32
 
     video_capture = cv2.VideoCapture(camera.connection_string())  # starting camera
 
@@ -211,7 +211,7 @@ async def face_recog_live(faceNet, maskNet, camera):
 
     MASK_DETECT_INTERVAL = 5
     FACE_RECOG_INTERVAL = 8
-    TEMP_COMPROBATION_INTERVAL = 10
+    TEMP_COMPROBATION_INTERVAL = 5
     TIME_START_AGAIN = 13
     WINDOW_TIME_SINCE = 30
 
