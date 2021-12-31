@@ -1,8 +1,10 @@
 import AccessControl.Data.classes as classes
 import AccessControl.Data.enums as enums
+import numpy as np
 import sqlalchemy
 import time
 import datetime
+import holidays
 
 Session = sqlalchemy.orm.sessionmaker()
 Session.configure(bind=classes.engine)
@@ -128,11 +130,39 @@ def get_all_pictures():
     return (_session.query(classes.Picture).join(classes.Picture.person).
             filter(classes.Person.active).all())
 
-
 def get_employees_pictures():
     return (_session.query(classes.Picture).join(classes.Picture.person).
             filter(classes.Person.role >= enums.PersonRole.PERSON).filter(classes.Person.active).all())
 
-
 def get_accepted_appointments_pictures():
     return (_session.query(classes.Picture).join(classes.Person).join(classes.Appointment).filter(classes.Appointment.status == enums.AppointmentStatus.ACCEPTED).all())
+
+def grouped(iterable, n):
+    return zip(*[iter(iterable)]*n)
+
+def _get_day_entries_employee(employee_id, date):
+    entries = _session.query(classes.Time_Entry).filter(classes.Time_Entry.person_id == employee_id).all()
+    return [entrie for entrie in entries if entrie.action_time.date() == date]
+
+def _get_day_time_employee(employee_id, date_time):
+    date = date_time.date()
+    entries = _get_day_entries_employee(employee_id, date)
+    country_holidays = holidays.DominicanRepublic(years = date.year)
+    regular_work_hours = 8
+    return sum(
+        (out.action_time - entry.action_time).total_seconds()//3600
+        for entry, out in grouped(entries, 2)
+        if ((entry.action is enums.EntryTypes.ENTRY)
+        and (out.action in {enums.EntryTypes.EXIT, enums.EntryTypes.PC}))
+    ) if date not in country_holidays else regular_work_hours
+
+def get_weekly_payment(year, week, employee_id=1):
+    start = datetime.datetime.fromisocalendar(year, week, 1)
+    end = start + datetime.timedelta(days=5)
+    delta = datetime.timedelta(days=1)
+    wage = get_employee(employee_id).hourly_wage
+    total_time = sum(
+        _get_day_time_employee(employee_id, day)
+        for day in np.arange(start, end, delta).astype(datetime.datetime)
+    )
+    return total_time * wage
