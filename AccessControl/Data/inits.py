@@ -2,6 +2,7 @@ import csv
 import sys
 import requests
 import traceback
+import datetime
 import AccessControl.Data.crud as crud
 import AccessControl.Data.data_manipulation as dm
 import AccessControl.Data.classes as classes
@@ -33,6 +34,20 @@ def admin_init():
                 for vaccine in vaccine_list:
                     crud.add_entry(vaccine)
     return employee.id, row['password']
+
+def entries_init():
+    with open('./CSVs/entries.csv') as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            action = enums.EntryTypes(int(row['action']))
+            action_time = datetime.datetime.strptime(
+                row['action_time'], '%Y-%m-%d %H:%M:%S')
+            picture = crud.get_entry(classes.Picture, int(row['picture_id']))
+            person = crud.get_entry(classes.Person, int(row['person_id']))
+            time_entry = classes.Time_Entry(
+                action=action, action_time=action_time, picture=picture, person=person)
+            crud.add_entry(time_entry)
+
 
 def camera_init():
     camera = classes.Camera(
@@ -88,5 +103,7 @@ def init():
         employees_init()
         print('appointment...')
         appointment_init()
+        print('entries...')
+        entries_init()
     except Exception as e:
         traceback.print_exc()
