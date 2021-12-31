@@ -96,7 +96,7 @@ class Picture(Base, SerializerMixin):
 
     person = sqlalchemy.orm.relationship("Person", back_populates="pictures")
     time_entry = sqlalchemy.orm.relationship(
-        "Time_Entry", back_populates="picture", uselist=False)
+        "Time_Entry", back_populates="picture")
 
     def __str__(self) -> str:
         return f'Picture... id: {self.id}, person name: {self.person.first_name} {self.person.last_name}'
@@ -143,8 +143,8 @@ class Time_Entry(Base, SerializerMixin):
         "Picture", back_populates="time_entry")
 
     def __str__(self) -> str:
-        return f'Time Entry... id: {self.id}, person name: {self.person.first_name} \
-            action: {self.action} time:{self.action_time}'
+        return f'Time Entry... id: {self.id}\nperson name: {self.person.first_name}\
+            \naction: {self.action} \ntime:{self.action_time}\n'
 
 
 class Appointment(Base, SerializerMixin):
