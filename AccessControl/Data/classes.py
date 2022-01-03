@@ -170,6 +170,10 @@ class Appointment(Base, SerializerMixin):
     employee = sqlalchemy.orm.relationship(
         "Employee", back_populates="appointments")
 
+    def __str__(self) -> str:
+        return f'Appointment... id: {self.id}\nperson name: {self.person.first_name}\
+            \naction: {self.status} \ntime:{self.start}\n'
+
     def get_status(self):
         return {"name":self.status.name, "value": self.status.value}
 
