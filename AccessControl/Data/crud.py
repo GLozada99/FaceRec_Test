@@ -127,7 +127,7 @@ def appointments_by_person(person):
     return _session.query(classes.Appointment).filter(classes.Appointment.person_id==person.id).all()
 
 def appointments_by_person_time(person):
-    return _session.query(classes.Appointment).filter(classes.Appointment.person_id==person.id).filter(classes.Appointment.status==enums.AppointmentStatus.ACCEPTED).filter((classes.Appointment.start + datetime.timedelta(hours=1)) >= datetime.now()).first()
+    return _session.query(classes.Appointment).filter(classes.Appointment.person_id==person.id).filter(classes.Appointment.status==enums.AppointmentStatus.ACCEPTED).filter((classes.Appointment.start + datetime.timedelta(hours=1)) >= datetime.datetime.now()).first()
 
 def get_all_pictures():
     return (_session.query(classes.Picture).join(classes.Picture.person).

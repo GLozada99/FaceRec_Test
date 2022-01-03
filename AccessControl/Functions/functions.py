@@ -214,6 +214,7 @@ async def face_recog_live(faceNet, maskNet, camera):
     for person_id, encoding, _ in pics:
         person_ids.append(person_id)
         encodings.append(encoding)
+    print(person_ids)
     while True:
         time.sleep(0.02)
         _, frame = video_capture.read()  # getting frame
@@ -308,27 +309,29 @@ async def face_recog_live(faceNet, maskNet, camera):
         if face_recognition_flag and (mask_detection_flag or not camera.ask_mask) and (temp_comprobation_flag or not camera.ask_temp):
             open_door = True
             if profile == enums.PictureClassification.ACCEPTED_APPOINTMENTS:
-                open_door, available_appointment = dm.has_available_appointment(p_id)
+                available_appointment = dm.has_available_appointment(p_id)
+                open_door = bool(available_appointment)
                 if open_door:
                     status = enums.AppointmentStatus.ONGOING if camera.entry_type == enums.EntryTypes.ENTRY else enums.AppointmentStatus.FINALIZED
-                    _set_appointment_status(crud.get_entry(classes.Appointment(), available_appointment), status)
+                    _set_appointment_status(available_appointment, status)
             if open_door:
                 await mx.matrix_send_message(client, door_room_id, '1')
                 messages.append('5Welcome')
                 dm.insert_picture_discovered(
                     p_id, rgb_frame, unknown_face_encoding, camera.entry_type.name)
-                mask_detection_flag = False
-                face_recognition_flag = False
-                temp_comprobation_flag = False
-
-                time_mask_detection = time.time()
-                time_face_recognition = time.time()
-                time_temp_comprobation = time.time()
-                time_since_mask = time.time()
-                time_since_face = time.time()
-                time_welcomed = time.time()
             else:
                 messages.append('9Appointment')
+
+            mask_detection_flag = False
+            face_recognition_flag = False
+            temp_comprobation_flag = False
+
+            time_mask_detection = time.time()
+            time_face_recognition = time.time()
+            time_temp_comprobation = time.time()
+            time_since_mask = time.time()
+            time_since_face = time.time()
+            time_welcomed = time.time()
 
 
     video_capture.release()
