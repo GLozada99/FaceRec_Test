@@ -156,20 +156,20 @@ def weekly_payment(id, year_week):
         json_entries = {
             'date': day,
             'hours': time,
-            'wage': f'{time * employee.hourly_wage}$',
+            'wage': f'{round(time * employee.hourly_wage, 2)}$',
             'holiday': time == crud.REGULAR_WORK_HOURS and not day_entries,
             'entries': [
                 flatten(
                     entry.to_dict(only=('id', 'action_type', 'action_time'))
                 )
-                for entry in day_entries
+                for entry in day_entries[::-1]
             ],
         }
 
         date_entries.append(json_entries)
 
     json_data['week_time'] = week_time
-    json_data['week_wage'] = f'{week_time * employee.hourly_wage}$'
+    json_data['week_wage'] = f'{round(week_time * employee.hourly_wage, 2)}$'
     json_data['week_entries'] = date_entries
     json_data['picture'] = _get_person_picture(employee.person)
     json_data['employee'] = flatten(employee.to_dict())

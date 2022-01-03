@@ -161,8 +161,12 @@ async def temp_okay(client, acceptable_time, room_id):
 def get_profile():
     return crud.get_config().profile
 
-def get_pictures_profile():
-    profile = get_profile()
+def get_start_end_time():
+    conf = crud.get_config()
+    return conf.start_time, conf.end_time
+
+def get_pictures_profile(profile):
+
     pics = dm.get_pictures_encodings_by_type(profile)
 
     # list of tuples (person_id, face_enconding)
@@ -219,10 +223,10 @@ async def face_recog_live(faceNet, maskNet, camera):
 
     messages = []
     message_task = None
-    profile = get_profile()
-    pics = dm.get_pictures_encodings_by_type(profile)
 
-    person_ids, encodings = get_pictures_profile()
+    profile = get_profile()
+    person_ids, encodings = get_pictures_profile(profile)
+    start_time, end_time = get_start_end_time()
     print(person_ids)
     while True:
         time.sleep(0.02)
@@ -242,7 +246,9 @@ async def face_recog_live(faceNet, maskNet, camera):
             continue
 
         if has_time_passed(time_profile, PROFILE_INTERVAL):
-            person_ids, encodings = get_pictures_profile()
+            profile = get_profile()
+            person_ids, encodings = get_pictures_profile(profileprofile)
+            start_time, end_time = get_start_end_time()
             time_profile = time.time()
             print(person_ids)
         if has_time_passed(time_since_mask, WINDOW_TIME_SINCE):
@@ -253,8 +259,17 @@ async def face_recog_live(faceNet, maskNet, camera):
             mask = await has_mask_task
             time_mask_detection = time.time()
 
+
         if mask is None:  # if no face was detected, get another frame
             continue
+
+        if (
+            not start_time < datetime.now().time() < end_time
+            and camera.entry_type == enums.EntryTypes.ENTRY
+        ):
+            messages.append('10Time')
+            continue
+
 
         if mask:
             mask_detection_flag = True
@@ -304,7 +319,7 @@ async def face_recog_live(faceNet, maskNet, camera):
                 if open_door:
                     status = enums.AppointmentStatus.ONGOING if camera.entry_type == enums.EntryTypes.ENTRY else enums.AppointmentStatus.FINALIZED
                     _set_appointment_status(available_appointment, status)
-            if open_door:
+            if open_door :
                 await mx.matrix_send_message(client, door_room_id, '1')
                 messages.append('5Welcome')
                 if crud.is_last_entry_equal(p_id, camera.entry_type):
