@@ -161,6 +161,25 @@ async def temp_okay(client, acceptable_time, room_id):
 def get_profile():
     return crud.get_config().profile
 
+def get_pictures_profile():
+    profile = get_profile()
+    pics = dm.get_pictures_encodings_by_type(profile)
+
+    # list of tuples (person_id, face_enconding)
+    person_ids = []
+    encodings = []
+    for person_id, encoding, _ in pics:
+        person_ids.append(person_id)
+        encodings.append(encoding)
+
+    return person_ids, encodings
+
+async def send_audio_messages(messages, client, speaker_room_id):
+    message_task = asyncio.create_task(mx.matrix_send_message(
+        client, speaker_room_id, '\n'.join(messages)))
+    await message_task
+    print(messages)
+
 
 async def face_recog_live(faceNet, maskNet, camera):
     video_capture = cv2.VideoCapture(camera.connection_string())  # starting camera
@@ -171,13 +190,7 @@ async def face_recog_live(faceNet, maskNet, camera):
     time_since_mask = time.time()
     time_since_face = time.time()
     time_profile = time.time()
-
-    # timestamp for when person was welcomed (face and mask were approved)
     time_welcomed = time.time()
-
-    # maximum time since an acceptable temp was taken from the sensor
-    acceptable_temp_time = 32
-
 
     server = config('MATRIX_SERVER')
     user = config('MATRIX_USER')
@@ -201,19 +214,15 @@ async def face_recog_live(faceNet, maskNet, camera):
     TEMP_COMPROBATION_INTERVAL = 5
     TIME_START_AGAIN = 13
     WINDOW_TIME_SINCE = 30
-    PROFILE_INTERVAL = 60
+    PROFILE_INTERVAL = 60*15
+    ACCEPTABLE_TIME_TEMP = 32
 
     messages = []
     message_task = None
     profile = get_profile()
     pics = dm.get_pictures_encodings_by_type(profile)
 
-    # list of tuples (person_id, face_enconding)
-    person_ids = []
-    encodings = []
-    for person_id, encoding, _ in pics:
-        person_ids.append(person_id)
-        encodings.append(encoding)
+    person_ids, encodings = get_pictures_profile()
     print(person_ids)
     while True:
         time.sleep(0.02)
@@ -224,10 +233,7 @@ async def face_recog_live(faceNet, maskNet, camera):
 
         mask = None
         if messages:
-            message_task = asyncio.create_task(mx.matrix_send_message(
-                client, speaker_room_id, '\n'.join(messages)))
-            await message_task
-            print(messages)
+            await send_audio_messages(messages, client, speaker_room_id)
             messages.clear()
 
         # if time since last welcome is less than TIME_START_AGAIN,
@@ -236,36 +242,25 @@ async def face_recog_live(faceNet, maskNet, camera):
             continue
 
         if has_time_passed(time_profile, PROFILE_INTERVAL):
-            profile = get_profile()
+            person_ids, encodings = get_pictures_profile()
             time_profile = time.time()
-
-        # mask detection and face recognition flags will only stay true
-        # for WINDOW_TIME_SINCE seconds
+            print(person_ids)
         if has_time_passed(time_since_mask, WINDOW_TIME_SINCE):
             mask_detection_flag = False
-
-        # only making mask (and person) comprobation
-        # every MASK_DETECT_INTERVAL seconds
         if has_time_passed(time_mask_detection, MASK_DETECT_INTERVAL):
             has_mask_task = asyncio.create_task(
                 has_mask(frame, faceNet, maskNet))
             mask = await has_mask_task
             time_mask_detection = time.time()
+
         if mask is None:  # if no face was detected, get another frame
             continue
 
         if mask:
             mask_detection_flag = True
-            # Takes time since mask was detected to allow for
-            # 'FACE_RECOG_INTERVAL' seconds at most for face recognition
             time_since_mask = time.time()
             if not face_recognition_flag:
-                # No face recog flag means that's the only thing left for welcoming.
-                # Because there's a mask, the person is asked to remove it for the face_recognition to begin
                 messages.append('1MaskWasDetected')
-
-        # Only if there's no mask, a face hasn't been recognized
-        # and time has passed since last face recognition there'll be a face recognition
         elif has_time_passed(time_face_recognition, FACE_RECOG_INTERVAL) and not face_recognition_flag:
             face_recog_task = asyncio.create_task(face_recog(
                 frame, encodings))
@@ -277,22 +272,17 @@ async def face_recog_live(faceNet, maskNet, camera):
                     "%Y-%m-%d %H:%M:%S", time.localtime())
                 person = crud.get_entry(classes.Person, p_id)
 
-                print(f'{person}, en la fecha {now}')
+                print(f'{person}, {now}')
                 messages.append('2PersonWasRecognized')
 
                 face_recognition_flag = True
                 time_since_face = time.time()
-                # dm.insert_picture_discovered(person_id,
-                # rgb_frame, unknown_face_enconding)
                 if mask_detection_flag:
                     messages.append('3PutMaskOn')
                 elif camera.ask_mask:
                     messages.append('4MaskWasNotDetected')
-
             else:
                 messages.append('6UnknownPerson')
-        # After a face has been recognized and a mask has been detected, the door will open if temperature is good
-        # and all control variables will reset to original state
 
         if has_time_passed(time_temp_comprobation, TEMP_COMPROBATION_INTERVAL) and camera.ask_temp:
             temp_okay_task = asyncio.create_task(
