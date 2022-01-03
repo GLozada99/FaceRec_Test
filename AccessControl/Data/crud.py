@@ -141,6 +141,13 @@ def get_employees_pictures():
 def get_accepted_appointments_pictures():
     return (_session.query(classes.Picture).join(classes.Person).join(classes.Appointment).filter((classes.Appointment.status == enums.AppointmentStatus.ACCEPTED) | (classes.Appointment.status == enums.AppointmentStatus.ONGOING)).all())
 
+def get_closest_entry_employee(employee_id):
+    return _session.query(classes.Time_Entry).filter(classes.Time_Entry.person_id == employee_id, classes.Time_Entry.action_time < datetime.datetime.now()).order_by(classes.Time_Entry.action_time.desc()).first()
+
+def is_last_entry_equal(employee_id, current_entry):
+    last_entry = get_closest_entry_employee(employee_id)
+    return last_entry.action == current_entry
+
 def grouped(iterable, n):
     return zip(*[iter(iterable)]*n)
 

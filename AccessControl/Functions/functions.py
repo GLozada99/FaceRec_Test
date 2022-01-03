@@ -286,7 +286,7 @@ async def face_recog_live(faceNet, maskNet, camera):
 
         if has_time_passed(time_temp_comprobation, TEMP_COMPROBATION_INTERVAL) and camera.ask_temp:
             temp_okay_task = asyncio.create_task(
-                temp_okay(client, acceptable_temp_time, temper_room_id))
+                temp_okay(client, ACCEPTABLE_TIME_TEMP, temper_room_id))
             temp_comprobation_flag, _ = await temp_okay_task
             time_temp_comprobation = time.time()
 
@@ -307,6 +307,8 @@ async def face_recog_live(faceNet, maskNet, camera):
             if open_door:
                 await mx.matrix_send_message(client, door_room_id, '1')
                 messages.append('5Welcome')
+                if crud.is_last_entry_equal(p_id, camera.entry_type):
+                    dm.fix_entry(p_id, camera.entry_type)
                 dm.insert_picture_discovered(
                     p_id, rgb_frame, unknown_face_encoding, camera.entry_type.name)
             else:

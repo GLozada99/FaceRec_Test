@@ -10,7 +10,7 @@ from PIL import Image
 from numpy_serializer import to_bytes, from_bytes
 import base64
 import io
-from datetime import datetime
+import datetime
 import hashlib
 
 
@@ -129,10 +129,25 @@ def insert_picture_discovered(person_id, picture_frame, face_encoding, action):
     newPicture = classes.Picture(picture_bytes=picture_bytes,
                                  face_bytes=face_bytes, person=person)
     newTimeEntry = classes.Time_Entry(
-        action=action, action_time=datetime.now(), picture=newPicture, person=person)
+        action=action, action_time=datetime.datetime.now(), picture=newPicture, person=person)
 
     crud.add_entry(newPicture)
     crud.add_entry(newTimeEntry)
+
+def fix_entry(person_id, entry_type):
+    time_last_entry = crud.get_closest_entry_employee(person_id).action_time
+    pic = crud.first_picture_person(crud.get_all(person_id))
+
+    if entry_type == enums.EntryTypes.ENTRY: #new exit one minute after going in
+        action = enums.EntryTypes.EXIT
+        action_time = time_last_entry + datetime.timedelta(seconds=60)
+    else: #new entry one minute before going out
+        action = enums.EntryTypes.ENTRY
+        action_time = datetime.datetime.now() - datetime.timedelta(seconds=60)
+
+
+    newTimeEntry = classes.Time_Entry(
+        action=action, action_time=action_time, picture=pic, person_id=person_id)
 
 
 def get_pictures_encodings():
