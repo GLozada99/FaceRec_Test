@@ -77,7 +77,7 @@ def list_appointments():
 def list_time_entries():
     '''Returns a list of all the entries'''
     json_data = [flatten(entry.to_dict(
-            only=('id', 'action', 'action_time', 'person.id', 'person.first_name', 'person.last_name',
+            only=('id', 'action_type', 'action_time', 'person.full_name',
                   ))) for entry in crud.get_entries(classes.Time_Entry)]
     msg = '' if len(json_data) else 'No entries'
     return jsonify(result=json_data, msg=msg), HTTPStatus.OK
@@ -135,6 +135,43 @@ def employee_methods(id):
     else:
         crud.delete_entry(classes.Person, int(id))
         return jsonify(msg='Employee deleted successfully'), HTTPStatus.OK
+
+@app.route('/employee/<id>/weekly-payment/<year_week>', methods=['GET'])
+@jwt_required()
+def weekly_payment(id, year_week):
+    '''
+    GET: Returns data regarding entries on a week, as well as calculated payment
+    '''
+    employee_id = int(id)
+    employee = crud.get_employee(employee_id)
+    year, week = [int(data) for data in year_week.split('-W')]
+    json_data = {}
+    data = crud.get_week_work_hours(year, week, employee)
+
+    week_time = 0
+    date_entries = []
+    for day, (day_entries, time) in data.items():
+        time = round(time,2)
+        week_time += time
+        json_entries = {}
+        json_entries['date'] = day
+        json_entries['hours'] = time
+        json_entries['wage'] = f'{time * employee.hourly_wage}$'
+        json_entries['holiday'] = time == crud.REGULAR_WORK_HOURS and not day_entries
+        json_entries['entries'] = [flatten(entry.to_dict(only=('id', 'action_type', 'action_time'))) for entry in day_entries]
+        date_entries.append(json_entries)
+
+    json_data['week_time'] = week_time
+    json_data['week_wage'] = f'{week_time * employee.hourly_wage}$'
+    json_data['week_entries'] = date_entries
+    json_data['picture'] = _get_person_picture(employee.person)
+    json_data['employee'] = flatten(employee.to_dict())
+
+
+    msg = 'Good'
+    status = HTTPStatus.OK
+
+    return jsonify(result=json_data, msg=msg), status
 
 @app.route('/appointment/<id>', methods=['GET'])
 def get_appointment_by_id(id):

@@ -52,7 +52,7 @@ class Person(Base, SerializerMixin):
     def __str__(self) -> str:
         return f'Person... id: {self.id}, name: {self.first_name} {self.last_name}'
 
-    def get_role(self) -> str:
+    def get_role(self):
         return {"name":self.role.name, "value": self.role.value}
 
     def full_name(self) ->str:
@@ -120,7 +120,7 @@ class Vaccine(Base, SerializerMixin):
         return f'Vaccine... id: {self.id}, person name: {self.person.first_name} \
             lab: {self.dose_lab} date:{self.dose_date}'
 
-    def lab(self) -> str:
+    def lab(self):
         return {"name":self.dose_lab.name, "value": self.dose_lab.value}
 
 
@@ -141,6 +141,9 @@ class Time_Entry(Base, SerializerMixin):
         "Person", back_populates="time_entries")
     picture = sqlalchemy.orm.relationship(
         "Picture", back_populates="time_entry")
+
+    def action_type(self):
+        return f'{self.action.name}'
 
     def __str__(self) -> str:
         return f'Time Entry... id: {self.id}\nperson name: {self.person.first_name}\
@@ -167,7 +170,7 @@ class Appointment(Base, SerializerMixin):
     employee = sqlalchemy.orm.relationship(
         "Employee", back_populates="appointments")
 
-    def get_status(self) -> str:
+    def get_status(self):
         return {"name":self.status.name, "value": self.status.value}
 
 

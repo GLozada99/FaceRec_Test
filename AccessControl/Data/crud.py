@@ -9,6 +9,7 @@ import holidays
 Session = sqlalchemy.orm.sessionmaker()
 Session.configure(bind=classes.engine)
 _session = Session()
+REGULAR_WORK_HOURS = 8
 
 
 def add_entry(entry):
@@ -140,29 +141,30 @@ def get_accepted_appointments_pictures():
 def grouped(iterable, n):
     return zip(*[iter(iterable)]*n)
 
-def _get_day_entries_employee(employee_id, date):
-    entries = _session.query(classes.Time_Entry).filter(classes.Time_Entry.person_id == employee_id).all()
+def _get_day_entries_employee(employee, date):
+    entries = _session.query(classes.Time_Entry).filter(classes.Time_Entry.person_id == employee.id).order_by(classes.Time_Entry.action_time.asc()).all()
     return [entrie for entrie in entries if entrie.action_time.date() == date]
 
-def _get_day_time_employee(employee_id, date_time):
+def _get_day_time_employee(employee, date_time):
     date = date_time.date()
-    entries = _get_day_entries_employee(employee_id, date)
+    entries = _get_day_entries_employee(employee, date)
     country_holidays = holidays.DominicanRepublic(years = date.year)
-    regular_work_hours = 8
-    return sum(
-        (out.action_time - entry.action_time).total_seconds()//3600
+
+    return (sum(
+        (out.action_time - entry.action_time).total_seconds()/3600
         for entry, out in grouped(entries, 2)
         if ((entry.action is enums.EntryTypes.ENTRY)
         and (out.action in {enums.EntryTypes.EXIT, enums.EntryTypes.PC}))
-    ) if date not in country_holidays else regular_work_hours
+    ) if date not in country_holidays else REGULAR_WORK_HOURS), entries
 
-def get_weekly_payment(year, week, employee_id=1):
+def get_week_work_hours(year, week, employee=1):
     start = datetime.datetime.fromisocalendar(year, week, 1)
     end = start + datetime.timedelta(days=5)
     delta = datetime.timedelta(days=1)
-    wage = get_employee(employee_id).hourly_wage
-    total_time = sum(
-        _get_day_time_employee(employee_id, day)
-        for day in np.arange(start, end, delta).astype(datetime.datetime)
-    )
-    return total_time * wage
+
+    all_entries = {}
+    for day in np.arange(start, end, delta).astype(datetime.datetime):
+        time, entries = _get_day_time_employee(employee, day)
+        all_entries[str(day.date())] = entries, time
+
+    return all_entries
