@@ -514,7 +514,7 @@ def add_comment():
     return jsonify(msg=msg), status
 
 @app.route('/set-config', methods=['PATCH'])
-@jwt_required()
+# @jwt_required()
 async def set_config():
     server = config('MATRIX_SERVER')
     user = config('MATRIX_USER')
@@ -527,10 +527,16 @@ async def set_config():
     status = HTTPStatus.BAD_REQUEST
 
     if data:
-        profile = enums.PictureClassification(int(data['profile'])).name
+        start_time = data['start_time']
+        end_time = data['end_time']
+        profile = enums.PictureClassification(int(data['profile']))
+        country = enums.CountryCodes(int(data['country']))
 
-        config = crud.get_config()
-        config.profile = profile
+        configuration = crud.get_config()
+        configuration.start_time = start_time
+        configuration.end_time = end_time
+        configuration.profile = profile
+        configuration.country = country
         crud.commit()
 
         time_out = 20
@@ -538,13 +544,10 @@ async def set_config():
         try:
             client = await asyncio.wait_for(
                 mx.matrix_login(server, user, password, device_id), time_out)
-
             lang_room_id = await asyncio.wait_for(
                 mx.matrix_get_room_id(client, lang_room_name), time_out)
-
             await asyncio.wait_for(
                 mx.matrix_send_message(client, lang_room_id, language), time_out)
-
             await asyncio.wait_for(mx.matrix_logout_close(client), time_out)
             msg = 'Configuration Set Succesfully'
             code = HTTPStatus.OK
