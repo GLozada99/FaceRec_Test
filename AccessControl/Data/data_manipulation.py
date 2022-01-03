@@ -188,6 +188,6 @@ def compare_hash(raw_string: str, hash_string: str):
     return compute_hash(raw_string) == hash_string
 
 
-def has_available_appointment(person_id):
-    return crud.appointments_by_person_time(
-        crud.get_entry(classes.Person, person_id))
+def has_available_appointment(person_id, entry_type):
+    return crud.appointment_by_person_time(
+        crud.get_entry(classes.Person, person_id), entry_type)

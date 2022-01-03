@@ -126,8 +126,9 @@ def first_picture_person(person):
 def appointments_by_person(person):
     return _session.query(classes.Appointment).filter(classes.Appointment.person_id==person.id).all()
 
-def appointments_by_person_time(person):
-    return _session.query(classes.Appointment).filter(classes.Appointment.person_id==person.id).filter(classes.Appointment.status==enums.AppointmentStatus.ACCEPTED).filter((classes.Appointment.start + datetime.timedelta(hours=1)) >= datetime.datetime.now()).first()
+def appointment_by_person_time(person, entry_type):
+    return _session.query(classes.Appointment).filter(classes.Appointment.person_id==person.id).filter(classes.Appointment.status==enums.AppointmentStatus.ACCEPTED).filter((classes.Appointment.start + datetime.timedelta(hours=1)) >= datetime.datetime.now()).first() if entry_type == enums.EntryTypes.ENTRY else _session.query(classes.Appointment).filter(classes.Appointment.person_id==person.id).filter(classes.Appointment.status==enums.AppointmentStatus.ONGOING).first()
+
 
 def get_all_pictures():
     return (_session.query(classes.Picture).join(classes.Picture.person).
@@ -138,7 +139,7 @@ def get_employees_pictures():
             filter(classes.Person.role >= enums.PersonRole.PERSON).filter(classes.Person.active).all())
 
 def get_accepted_appointments_pictures():
-    return (_session.query(classes.Picture).join(classes.Person).join(classes.Appointment).filter(classes.Appointment.status == enums.AppointmentStatus.ACCEPTED).all())
+    return (_session.query(classes.Picture).join(classes.Person).join(classes.Appointment).filter((classes.Appointment.status == enums.AppointmentStatus.ACCEPTED) | (classes.Appointment.status == enums.AppointmentStatus.ONGOING)).all())
 
 def grouped(iterable, n):
     return zip(*[iter(iterable)]*n)

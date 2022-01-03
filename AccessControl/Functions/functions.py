@@ -309,7 +309,7 @@ async def face_recog_live(faceNet, maskNet, camera):
         if face_recognition_flag and (mask_detection_flag or not camera.ask_mask) and (temp_comprobation_flag or not camera.ask_temp):
             open_door = True
             if profile == enums.PictureClassification.ACCEPTED_APPOINTMENTS:
-                available_appointment = dm.has_available_appointment(p_id)
+                available_appointment = dm.has_available_appointment(p_id, camera.entry_type)
                 open_door = bool(available_appointment)
                 if open_door:
                     status = enums.AppointmentStatus.ONGOING if camera.entry_type == enums.EntryTypes.ENTRY else enums.AppointmentStatus.FINALIZED
