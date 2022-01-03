@@ -158,29 +158,19 @@ async def temp_okay(client, acceptable_time, room_id):
     return (answer, temp)
 
 
-async def get_profile(client, room_id):
-    data = await mx.matrix_get_messages(client, room_id)
-    error = True
-    if data:
-        data = data[0]
-        try:
-            profile = enums.PictureClassification[data[0]]
-            error = False
-        except KeyError:
-            pass
-    if error:
-        profile = enums.PictureClassification(0)
-
-    return profile
+def get_profile():
+    return crud.get_config().profile
 
 
 async def face_recog_live(faceNet, maskNet, camera):
+    video_capture = cv2.VideoCapture(camera.connection_string())  # starting camera
+
     time_mask_detection = time.time()
     time_face_recognition = time.time()
     time_temp_comprobation = time.time()
-
     time_since_mask = time.time()
     time_since_face = time.time()
+    time_profile = time.time()
 
     # timestamp for when person was welcomed (face and mask were approved)
     time_welcomed = time.time()
@@ -188,7 +178,6 @@ async def face_recog_live(faceNet, maskNet, camera):
     # maximum time since an acceptable temp was taken from the sensor
     acceptable_temp_time = 32
 
-    video_capture = cv2.VideoCapture(camera.connection_string())  # starting camera
 
     server = config('MATRIX_SERVER')
     user = config('MATRIX_USER')
@@ -197,13 +186,11 @@ async def face_recog_live(faceNet, maskNet, camera):
     temper_room_name = config('MATRIX_ROOM_NAME_TEMPERATURE')
     speaker_room_name = config('MATRIX_ROOM_NAME_SPEAKER')
     door_room_name = config('MATRIX_ROOM_NAME_DOOR')
-    profile_room_name = config('MATRIX_ROOM_NAME_PROFILE')
 
     client = await mx.matrix_login(server, user, password, device_id)
     temper_room_id = await mx.matrix_get_room_id(client, temper_room_name)
     speaker_room_id = await mx.matrix_get_room_id(client, speaker_room_name)
     door_room_id = await mx.matrix_get_room_id(client, door_room_name)
-    profile_room_id = await mx.matrix_get_room_id(client, profile_room_name)
 
     mask_detection_flag = False
     face_recognition_flag = False
@@ -214,10 +201,11 @@ async def face_recog_live(faceNet, maskNet, camera):
     TEMP_COMPROBATION_INTERVAL = 5
     TIME_START_AGAIN = 13
     WINDOW_TIME_SINCE = 30
+    PROFILE_INTERVAL = 60
 
     messages = []
     message_task = None
-    profile = await get_profile(client, profile_room_id)
+    profile = get_profile()
     pics = dm.get_pictures_encodings_by_type(profile)
 
     # list of tuples (person_id, face_enconding)
@@ -246,12 +234,14 @@ async def face_recog_live(faceNet, maskNet, camera):
         if not has_time_passed(time_welcomed, TIME_START_AGAIN):
             continue
 
+        if has_time_passed(time_profile, PROFILE_INTERVAL):
+            profile = get_profile()
+            time_profile = time.time()
+
         # mask detection and face recognition flags will only stay true
         # for WINDOW_TIME_SINCE seconds
         if has_time_passed(time_since_mask, WINDOW_TIME_SINCE):
             mask_detection_flag = False
-        if has_time_passed(time_since_face, WINDOW_TIME_SINCE):
-            face_recognition_flag = False
 
         # only making mask (and person) comprobation
         # every MASK_DETECT_INTERVAL seconds

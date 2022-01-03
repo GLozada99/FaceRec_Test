@@ -521,31 +521,29 @@ async def set_config():
     password = config('MATRIX_PASSWORD')
     device_id = config('MATRIX_DEVICE_ID_BACKEND')
     lang_room_name = config('MATRIX_ROOM_NAME_LANGUAGE')
-    profile_room_name = config('MATRIX_ROOM_NAME_PROFILE')
 
     data = request.get_json(force=True)
     msg = 'Incorrect Data'
     status = HTTPStatus.BAD_REQUEST
 
     if data:
-        language = enums.SpeakerLanguages(int(data['language'])).name
         profile = enums.PictureClassification(int(data['profile'])).name
 
-        time_out = 20
+        config = crud.get_config()
+        config.profile = profile
+        crud.commit()
 
+        time_out = 20
+        language = enums.SpeakerLanguages(int(data['language'])).name
         try:
             client = await asyncio.wait_for(
                 mx.matrix_login(server, user, password, device_id), time_out)
 
             lang_room_id = await asyncio.wait_for(
                 mx.matrix_get_room_id(client, lang_room_name), time_out)
-            profile_room_id = await asyncio.wait_for(
-                mx.matrix_get_room_id(client, profile_room_name), time_out)
 
             await asyncio.wait_for(
                 mx.matrix_send_message(client, lang_room_id, language), time_out)
-            await asyncio.wait_for(
-                mx.matrix_send_message(client, profile_room_id, profile), time_out)
 
             await asyncio.wait_for(mx.matrix_logout_close(client), time_out)
             msg = 'Configuration Set Succesfully'
