@@ -153,12 +153,19 @@ def weekly_payment(id, year_week):
     for day, (day_entries, time) in data.items():
         time = round(time,2)
         week_time += time
-        json_entries = {}
-        json_entries['date'] = day
-        json_entries['hours'] = time
-        json_entries['wage'] = f'{time * employee.hourly_wage}$'
-        json_entries['holiday'] = time == crud.REGULAR_WORK_HOURS and not day_entries
-        json_entries['entries'] = [flatten(entry.to_dict(only=('id', 'action_type', 'action_time'))) for entry in day_entries]
+        json_entries = {
+            'date': day,
+            'hours': time,
+            'wage': f'{time * employee.hourly_wage}$',
+            'holiday': time == crud.REGULAR_WORK_HOURS and not day_entries,
+            'entries': [
+                flatten(
+                    entry.to_dict(only=('id', 'action_type', 'action_time'))
+                )
+                for entry in day_entries
+            ],
+        }
+
         date_entries.append(json_entries)
 
     json_data['week_time'] = week_time
