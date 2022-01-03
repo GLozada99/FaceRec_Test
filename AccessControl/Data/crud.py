@@ -147,10 +147,13 @@ def _get_day_entries_employee(employee, date):
     entries = _session.query(classes.Time_Entry).filter(classes.Time_Entry.person_id == employee.id).order_by(classes.Time_Entry.action_time.asc()).all()
     return [entrie for entrie in entries if entrie.action_time.date() == date]
 
+def get_config():
+    return _session.query(classes.Configuration).get(1)
+
 def _get_day_time_employee(employee, date_time):
     date = date_time.date()
     entries = _get_day_entries_employee(employee, date)
-    country_holidays = holidays.DominicanRepublic(years = date.year)
+    country_holidays = holidays.CountryHoliday(get_config().country.name, years = date.year)
 
     return (sum(
         (out.action_time - entry.action_time).total_seconds()/3600

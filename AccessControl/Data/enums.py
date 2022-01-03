@@ -40,3 +40,8 @@ class EntryTypes(Enum):
     ENTRY = 0
     EXIT = 1
     PC = 2
+
+class CountryCodes(Enum):
+    DOM = 0
+    US = 1
+    CAN = 2

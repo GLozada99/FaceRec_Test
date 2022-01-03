@@ -173,8 +173,6 @@ class Appointment(Base, SerializerMixin):
     def get_status(self):
         return {"name":self.status.name, "value": self.status.value}
 
-
-
 class Comment(Base, SerializerMixin):
     __tablename__ = 'comments'
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
@@ -203,6 +201,14 @@ class Camera(Base, SerializerMixin):
     def connection_string(self):
         return (0 if self.ip_address == '0.0.0.0' else
                 f'rtsp://{self.user}:{self.password}@{self.ip_address}:554{self.route}')
+
+class Configuration(Base, SerializerMixin):
+    __tablename__ = "configuration"
+    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
+    start_time = sqlalchemy.Column(sqlalchemy.Time())
+    end_time = sqlalchemy.Column(sqlalchemy.Time())
+    profile = sqlalchemy.Column(sqlalchemy.Enum(enums.PictureClassification))
+    country = sqlalchemy.Column(sqlalchemy.Enum(enums.CountryCodes))
 
 
 if __name__ == '__main__':

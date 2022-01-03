@@ -87,6 +87,11 @@ def appointment_init():
         for row in reader:
             requests.post('http://localhost:5000/first-appointment', json=row)
 
+def config_init():
+    config = classes.Configuration(start_time=datetime.time(8,0,0), end_time=datetime.time(18,0,0), profile=enums.PictureClassification.ALL_ACTIVE, country=enums.CountryCodes.DOM)
+    crud.add_entry(config)
+
+
 def init():
     try:
         print('camera...')
@@ -105,5 +110,7 @@ def init():
         appointment_init()
         print('entries...')
         entries_init()
+        print('configuration...')
+        config_init()
     except Exception as e:
         traceback.print_exc()
