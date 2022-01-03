@@ -107,14 +107,16 @@ def person_by_ident_doc(identification_document):
     return _session.query(classes.Person).filter(
         classes.Person.identification_document == identification_document).first()
 
+def get_time_entries():
+    return _session.query(classes.Time_Entry).order_by(classes.Time_Entry.action_time.desc()).all()
 
 def vaccines_by_person(person):
     return _session.query(classes.Vaccine).filter(classes.Vaccine.person_id==person.id).all()
 
 
 def comments_by_employee(employee):
-    return reversed(_session.query(classes.Comment).filter(
-        classes.Comment.employee_id==employee.id).all())
+    return _session.query(classes.Comment).filter(
+        classes.Comment.employee_id==employee.id).order_by(classes.Comment.timestamp.desc()).all()
 
 
 def first_picture_person(person):

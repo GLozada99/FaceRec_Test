@@ -78,7 +78,7 @@ def list_time_entries():
     '''Returns a list of all the entries'''
     json_data = [flatten(entry.to_dict(
             only=('id', 'action_type', 'action_time', 'person.full_name',
-                  ))) for entry in crud.get_entries(classes.Time_Entry)]
+                  ))) for entry in crud.get_time_entries()]
     msg = '' if len(json_data) else 'No entries'
     return jsonify(result=json_data, msg=msg), HTTPStatus.OK
 
