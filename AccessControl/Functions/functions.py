@@ -298,6 +298,9 @@ async def face_recog_live(faceNet, maskNet, camera):
                     messages.append('4MaskWasNotDetected')
             else:
                 messages.append('6UnknownPerson')
+        elif face_recognition_flag and mask == False:
+            messages.append('4MaskWasNotDetected')
+
 
         if has_time_passed(time_temp_comprobation, TEMP_COMPROBATION_INTERVAL) and camera.ask_temp:
             temp_okay_task = asyncio.create_task(
