@@ -74,6 +74,10 @@ def commit():
     _session.commit()
 
 
+def rollback():
+    _session.rollback()
+
+
 def update_entry_with_entry(Class, source, destination):
     # not very sure about this one...
     destination.__dict__.update(source.__dict__)

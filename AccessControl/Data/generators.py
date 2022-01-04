@@ -48,7 +48,6 @@ def generate_picture(data, person, existent):
         pic_bytes = base64.b64decode(base64_pic)
     pic_io = io.BytesIO(pic_bytes)
     picture_data_constructor = dm.process_picture_file(pic_io)
-
     if picture_data_constructor:
         raw_bin_pic, face_encoding = picture_data_constructor
         if existent:
@@ -59,10 +58,11 @@ def generate_picture(data, person, existent):
         else:
             picture = classes.Picture(
                 picture_bytes=raw_bin_pic, face_bytes=face_encoding, person=person)
-
     return picture
 
-def generate_vaccines(data, person):
+def generate_vaccines(data, person, picture):
+    if not picture:
+        return []
     vaccine_list = []
 
     for vac in crud.vaccines_by_person(person):
@@ -105,7 +105,6 @@ def generate_employee(data, person, existent):
         employee = classes.Employee(id=person.id, position=position, birth_date=birth_date,
                                     email=email, start_date=start_date, person=person,
                                     password=password, hourly_wage=hourly_wage)
-
     return employee
 
 def generate_person_picture_vaccines(data):
@@ -116,7 +115,7 @@ def generate_person_picture_vaccines(data):
         raise ValueError(str(e))
 
     picture = generate_picture(data, person, existent)
-    vaccines = generate_vaccines(data, person)
+    vaccines = generate_vaccines(data, person, picture)
 
     return person, picture, vaccines, existent
 

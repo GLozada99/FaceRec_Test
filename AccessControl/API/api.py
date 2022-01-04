@@ -320,6 +320,7 @@ def add_employee():
                 status = HTTPStatus.OK
             else:
                 msg = 'No correct picture'
+                crud.rollback()
     return jsonify(msg=msg), status
 
 @app.route('/employees', methods=['POST'])
@@ -375,7 +376,6 @@ def first_appointment():
         try:
             person, picture, vaccine_list, _ = gn.generate_person_picture_vaccines(
                 data)
-
             employee_id = int(data['employee_id'])
             appointment = gn.generate_appointment(data, employee_id, person)
             if picture:
@@ -387,6 +387,7 @@ def first_appointment():
                 status = HTTPStatus.OK
             else:
                 msg = 'No correct picture'
+                crud.rollback()
         except Exception as e:
             print(e)
             msg = 'Error setting appointment'
