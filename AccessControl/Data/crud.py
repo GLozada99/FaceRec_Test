@@ -146,7 +146,7 @@ def get_closest_entry_employee(employee_id):
 
 def is_last_entry_equal(employee_id, current_entry):
     last_entry = get_closest_entry_employee(employee_id)
-    return last_entry.action == current_entry
+    return last_entry.action == current_entry if last_entry else False
 
 def grouped(iterable, n):
     return zip(*[iter(iterable)]*n)
