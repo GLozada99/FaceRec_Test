@@ -388,6 +388,7 @@ def first_appointment():
             else:
                 msg = 'No correct picture'
         except Exception as e:
+            print(e)
             msg = 'Error setting appointment'
 
     return jsonify(msg=msg), status
@@ -506,7 +507,7 @@ def add_comment():
 
         if comment_text:
             comment = classes.Comment(
-                text=commentText, employee=employee, timestamp=datetime.now())
+                text=comment_text, employee=employee, timestamp=datetime.now())
             crud.add_entry(comment)
             msg = 'Comment Added Successfully'
             status = HTTPStatus.OK
