@@ -218,7 +218,7 @@ async def face_recog_live(faceNet, maskNet, camera):
     TEMP_COMPROBATION_INTERVAL = 5
     TIME_START_AGAIN = 13
     WINDOW_TIME_SINCE = 30
-    PROFILE_INTERVAL = 60*15
+    PROFILE_INTERVAL = 60*1
     ACCEPTABLE_TIME_TEMP = 32
 
     messages = []
@@ -247,7 +247,7 @@ async def face_recog_live(faceNet, maskNet, camera):
 
         if has_time_passed(time_profile, PROFILE_INTERVAL):
             profile = get_profile()
-            person_ids, encodings = get_pictures_profile(profileprofile)
+            person_ids, encodings = get_pictures_profile(profile)
             start_time, end_time = get_start_end_time()
             time_profile = time.time()
             print(person_ids)
