@@ -47,6 +47,8 @@ def _set_appointment_status(appointment, status):
     appointment.status = status
     if status in {enums.AppointmentStatus.FINALIZED, enums.AppointmentStatus.REJECTED}:
         appointment.end = datetime.now()
+    elif status == enums.AppointmentStatus.ONGOING:
+        appointment.start = datetime.now()
     crud.commit()
 
 @app.route('/persons', methods=['GET']) #

@@ -8,6 +8,8 @@ import AccessControl.Data.data_manipulation as dm
 import AccessControl.Data.classes as classes
 import AccessControl.Data.generators as gn
 import AccessControl.Data.enums as enums
+import AccessControl.API.api as api
+
 import base64
 
 from decouple import config
@@ -86,9 +88,14 @@ def appointment_init():
         reader = csv.DictReader(file)
         for row in reader:
             requests.post('http://localhost:5000/first-appointment', json=row)
+    appointments = crud.get_entries(classes.Appointment)
+    for appointment in appointments:
+        api._set_appointment_status(appointment, enums.AppointmentStatus.FINALIZED)
+        appointment.end = appointment.start + datetime.timedelta(hours=0.5)
+    crud.commit()
 
 def config_init():
-    config = classes.Configuration(start_time=datetime.time(8,0,0), end_time=datetime.time(18,0,0), profile=enums.PictureClassification.ALL_ACTIVE, country=enums.CountryCodes.DOM)
+    config = classes.Configuration(start_time=datetime.time(8,0,0), end_time=datetime.time(18,0,0), profile=enums.PictureClassification.EMPLOYEES_ACTIVE, country=enums.CountryCodes.DOM)
     crud.add_entry(config)
 
 
