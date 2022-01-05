@@ -244,11 +244,6 @@ async def face_recog_live(faceNet, maskNet, camera):
             await send_audio_messages(messages, client, speaker_room_id)
             messages.clear()
 
-        # if time since last welcome is less than TIME_START_AGAIN,
-        # continue with the loop
-        if not has_time_passed(time_welcomed, TIME_START_AGAIN):
-            continue
-
         if has_time_passed(time_profile, PROFILE_INTERVAL):
             profile = get_profile()
             person_ids, encodings = get_pictures_profile(profile)
@@ -262,6 +257,12 @@ async def face_recog_live(faceNet, maskNet, camera):
                 has_mask(frame, faceNet, maskNet))
             mask = await has_mask_task
             time_mask_detection = time.time()
+
+        # if time since last welcome is less than TIME_START_AGAIN,
+        # continue with the loop
+        if not has_time_passed(time_welcomed, TIME_START_AGAIN):
+            continue
+
 
 
         if mask is None:  # if no face was detected, get another frame
@@ -280,7 +281,7 @@ async def face_recog_live(faceNet, maskNet, camera):
             time_since_mask = time.time()
             if not face_recognition_flag:
                 messages.append('1MaskWasDetected')
-        elif has_time_passed(time_face_recognition, FACE_RECOG_INTERVAL) and not face_recognition_flag:
+        elif has_time_passed(time_face_recognition, FACE_RECOG_INTERVAL) and not face_recognition_flag or has_time_passed(time_face_recognition, FACE_RECOG_INTERVAL*4):
             face_recog_task = asyncio.create_task(face_recog(
                 frame, encodings))
             face_recognition_flag, best_match_index, unknown_face_encoding, rgb_frame = await face_recog_task
