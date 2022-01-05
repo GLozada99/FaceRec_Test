@@ -231,7 +231,11 @@ async def face_recog_live(faceNet, maskNet, camera):
     while True:
         time.sleep(0.02)
         _, frame = video_capture.read()  # getting frame
-        cv2.imshow('Video', frame)  # showing video
+        try:
+            cv2.imshow('Video', frame)  # showing video
+        except:
+            pass
+
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
@@ -343,6 +347,8 @@ async def face_recog_live(faceNet, maskNet, camera):
             time_since_face = time.time()
             time_welcomed = time.time()
 
-
-    video_capture.release()
-    cv2.destroyAllWindows()
+    try:
+        video_capture.release()
+        cv2.destroyAllWindows()
+    except:
+        pass

@@ -479,6 +479,7 @@ def add_vaccine():
     data = request.get_json(force=True)
     msg = 'Incorrect Data'
     status = HTTPStatus.BAD_REQUEST
+    print(data)
     if data:
         employee = crud.get_entry(classes.Employee, int(get_jwt_identity()))
         try:
@@ -488,7 +489,6 @@ def add_vaccine():
         dose_lab = enums.VaccineLab(lab_num) if lab_num > -1 else ""
         dose_date = data['dose_date']
         lot_num = data['lot_num']
-
         if dose_lab and dose_date and lot_num:
             vaccine = classes.Vaccine(
                 dose_lab=dose_lab, dose_date=dose_date, lot_num=lot_num, person=employee.person)
